@@ -17,7 +17,6 @@ register('zh-CN', {
   'Combo.minLength': '组合表单数量不足{{minLength}}个，请添加更多',
   'Combo.type': '类型',
   'confirm': '确认',
-  'cancle': '取消',
   'Copyable.tip': '点击复制',
   'CRUD.exportCSV': '导出 CSV',
   'CRUD.exportExcel': '导出 Excel',
@@ -36,6 +35,7 @@ register('zh-CN', {
   'Date.dayslater': '{{days}}天后',
   'Date.endOfMonth': '本月最后一天',
   'Date.endOfWeek': '周日',
+  'Date.endOfLastMonth': '上月最后一天',
   'Date.hoursago': '{{hours}}小时前',
   'Date.hourslater': '{{hours}}小时后',
   'Date.invalid': '日期无效',
@@ -70,6 +70,7 @@ register('zh-CN', {
   'DateRange.valueConcat': ' 至 ',
   'DateTime.placeholder': '请选择日期以及时间',
   'MonthRange.placeholder': '请选择月份范围',
+  'QuarterRange.placeholder': '请选择季度范围',
   'delete': '删除',
   'deleteConfirm': '确认要删除？',
   'deleteFailed': '删除失败',
@@ -204,5 +205,6 @@ register('zh-CN', {
   'Wizard.prev': '上一步',
   'Wizard.saveAndNext': '保存并下一步',
   'year-to-year': '{{from}} 年 - {{to}} 年',
-  'Year.placeholder': '请选择年'
+  'Year.placeholder': '请选择年',
+  'rotate': '旋转'
 });

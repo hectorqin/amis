@@ -19,6 +19,12 @@
     transform: rotate(180deg);
   }
 
+  &.is-actived {
+    .#{$ns}Button {
+      color: var(--link-color);
+    }
+  }
+
   &--block {
     display: block;
 
@@ -76,8 +82,9 @@
 
     &.is-disabled {
       cursor: not-allowed;
-      pointer-events: none;
+      // pointer-events: none;
       color: var(--DropDown-menuItem-onDisabled-color);
+      filter: grayscale(80%);
     }
 
     &.#{$ns}DropDown-divider {

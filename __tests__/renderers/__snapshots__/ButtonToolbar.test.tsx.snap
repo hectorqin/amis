@@ -3,24 +3,42 @@
 exports[`Renderer:button-toolbar 1`] = `
 <div>
   <div
-    class="a-ButtonToolbar show"
+    class="a-Form-item a-Form-item--normal show"
+    data-role="form-item"
   >
-    <button
-      class="a-Button a-Button--default"
-      type="button"
+    <label
+      class="a-Form-label"
     >
       <span>
-        按钮1
+        <span
+          class="a-TplField"
+        >
+          <span>
+            button-toolbar
+          </span>
+        </span>
       </span>
-    </button>
-    <button
-      class="a-Button a-Button--default"
-      type="button"
+    </label>
+    <div
+      class="a-ButtonToolbar a-Form-control"
     >
-      <span>
-        按钮2
-      </span>
-    </button>
+      <button
+        class="a-Button a-Button--default"
+        type="button"
+      >
+        <span>
+          按钮1
+        </span>
+      </button>
+      <button
+        class="a-Button a-Button--default"
+        type="button"
+      >
+        <span>
+          按钮2
+        </span>
+      </button>
+    </div>
   </div>
 </div>
 `;

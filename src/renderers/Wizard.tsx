@@ -27,6 +27,8 @@ import {
 import {FormSchema} from './Form';
 import {ActionSchema} from './Action';
 
+import {tokenize} from '../utils/tpl-builtin';
+
 export type WizardStepSchema = Omit<FormSchema, 'type'> & {
   /**
    * 当前步骤用来保存数据的 api。
@@ -157,6 +159,8 @@ export interface WizardSchema extends BaseSchema {
   affixFooter?: boolean | 'always';
 
   steps: Array<WizardStepSchema>;
+
+  startStep?: string;
 }
 
 export interface WizardProps
@@ -179,7 +183,8 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
     actionPrevLabel: 'Wizard.prev',
     actionNextLabel: 'Wizard.next',
     actionNextSaveLabel: 'Wizard.saveAndNext',
-    actionFinishLabel: 'Wizard.finish'
+    actionFinishLabel: 'Wizard.finish',
+    startStep: '1'
   };
 
   static propsList: Array<string> = [
@@ -192,7 +197,8 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
     'actionNextSaveLabel',
     'actionFinishLabel',
     'onFinished',
-    'affixFooter'
+    'affixFooter',
+    'startStep'
   ];
 
   dom: any;
@@ -245,7 +251,10 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
         .then(value => {
           onInit && onInit(store.data);
           const state = {
-            currentStep: 1
+            currentStep:
+              typeof this.props.startStep === 'string'
+                ? parseInt(tokenize(this.props.startStep, this.props.data))
+                : 1
           };
 
           if (
@@ -273,7 +282,10 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
     } else {
       this.setState(
         {
-          currentStep: 1
+          currentStep:
+            typeof this.props.startStep === 'string'
+              ? parseInt(tokenize(this.props.startStep, this.props.data))
+              : 1
         },
         () => onInit && onInit(store.data)
       );
@@ -352,9 +364,11 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
     const steps = this.props.steps || [];
     index = Math.max(Math.min(steps.length, index), 1);
 
-    this.setState({
-      currentStep: index
-    });
+    if (index != this.state.currentStep) {
+      this.setState({
+        currentStep: index
+      });
+    }
   }
 
   @autobind
@@ -513,6 +527,7 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
     } else if (action.type === 'reset') {
       this.form.reset();
     } else if (action.actionType === 'dialog') {
+      store.setCurrentAction(action);
       store.openDialog(data);
     } else if (action.actionType === 'ajax') {
       if (!action.api) {
@@ -579,6 +594,9 @@ export default class Wizard extends React.Component<WizardProps, WizardState> {
   handleInit(values: any) {
     const step = this.state.currentStep;
     this.initalValues[step] = this.initalValues[step] || values;
+    const store = this.props.store;
+
+    store.updateData(values);
   }
 
   @autobind
@@ -1027,16 +1045,17 @@ function isJumpable(step: any, index: number, currentStep: number, data: any) {
 }
 
 @Renderer({
-  test: /(^|\/)wizard$/,
+  type: 'wizard',
   storeType: ServiceStore.name,
-  name: 'wizard',
   isolateScope: true
 })
 export class WizardRenderer extends Wizard {
   static contextType = ScopedContext;
 
-  componentWillMount() {
-    const scoped = this.context as IScopedContext;
+  constructor(props: WizardProps, context: IScopedContext) {
+    super(props);
+
+    const scoped = context;
     scoped.registerComponent(this);
   }
 
@@ -1060,6 +1079,7 @@ export class WizardRenderer extends Wizard {
     scoped.reload(target, data);
   }
 
+  @autobind
   handleDialogConfirm(values: object[], action: Action, targets: Array<any>) {
     super.handleDialogConfirm(values, action, targets);
 

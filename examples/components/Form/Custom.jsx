@@ -12,7 +12,7 @@ class MyFormItem extends React.Component {
       <div>
         <p>这个是个自定义组件。通过注册渲染器的方式实现。</p>
 
-        <p>当前值：{value}</p>
+        <p>当前值：{JSON.stringify(value)}</p>
 
         <a
           className="btn btn-default"
@@ -38,13 +38,13 @@ class CustomRenderer extends React.Component {
 }
 
 export default {
-  $schema: 'https://houtai.baidu.com/v2/schemas/page.json#',
   title: '自定义组件示例',
   body: [
     {
       type: 'form',
       mode: 'horizontal',
       api: '/api/mock2/form/saveForm?waitSeconds=2',
+      debug: true,
       actions: [
         {
           type: 'submit',
@@ -52,7 +52,7 @@ export default {
           primary: true
         }
       ],
-      controls: [
+      body: [
         {
           label: '姓名',
           type: 'text',
@@ -87,6 +87,7 @@ export default {
 
         {
           name: 'a',
+          asFormItem: true,
           children: ({value, onChange}) => (
             <div>
               <p>这是使用 children 的方式，也无需注册。</p>
@@ -118,7 +119,103 @@ export default {
         },
 
         {
-          type: 'my-renderer'
+          type: 'control',
+          body: {
+            type: 'my-renderer'
+          }
+        },
+
+        {
+          type: 'divider'
+        },
+        {
+          label: '',
+          asFormItem: true,
+          children: ({render}) => (
+            <div>
+              <p>组合现有组件</p>
+
+              {render(
+                'formitem',
+                [
+                  {
+                    type: 'input-text',
+                    name: 'x',
+                    label: 'X',
+                    value: '1'
+                  },
+                  {
+                    type: 'input-text',
+                    name: 'y',
+                    label: 'Y'
+                  }
+                ],
+                {
+                  formMode: 'normal'
+                }
+              )}
+            </div>
+          )
+        },
+        {
+          name: 'c',
+          label: '',
+          asFormItem: true,
+          component: ({render, value, onChange, name}) => {
+            function handleXChange(x) {
+              value = {
+                ...value,
+                x
+              };
+              onChange(value);
+
+              // 一定要 return false
+              return false;
+            }
+
+            function handleYChange(y) {
+              value = {
+                ...value,
+                y
+              };
+              onChange(value);
+
+              // 一定要 return false
+              return false;
+            }
+
+            return (
+              <div>
+                <p>组合现有组件并控制数据</p>
+
+                {render(
+                  'item1',
+                  {
+                    type: 'input-text',
+                    name: 'x',
+                    label: 'X'
+                  },
+                  {
+                    value: value?.x || '',
+                    onChange: handleXChange
+                  }
+                )}
+
+                {render(
+                  'item2',
+                  {
+                    type: 'input-text',
+                    name: 'y',
+                    label: 'Y'
+                  },
+                  {
+                    value: value?.y || '',
+                    onChange: handleYChange
+                  }
+                )}
+              </div>
+            );
+          }
         }
       ]
     },

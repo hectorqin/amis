@@ -40,7 +40,8 @@ export interface ButtonSchema extends BaseSchema {
     | 'danger'
     | 'link'
     | 'primary'
-    | 'dark';
+    | 'dark'
+    | 'light';
 
   /**
    * @deprecated 通过 level 来配置
@@ -424,7 +425,13 @@ export class Action extends React.Component<ActionProps, ActionState> {
 
     const result: any = onClick && onClick(e, this.props);
 
-    if (disabled || e.isDefaultPrevented() || result === false || !onAction) {
+    if (
+      disabled ||
+      e.isDefaultPrevented() ||
+      result === false ||
+      !onAction ||
+      this.state.inCountDown
+    ) {
       return;
     }
 
@@ -514,18 +521,7 @@ export class Action extends React.Component<ActionProps, ActionState> {
 
     const iconElement = generateIcon(cx, icon, 'Button-icon', iconClassName);
 
-    return isMenuItem ? (
-      <a
-        className={cx(className, {
-          [activeClassName || 'is-active']: isActive,
-          'is-disabled': disabled
-        })}
-        onClick={this.handleAction}
-      >
-        {iconElement}
-        {label}
-      </a>
-    ) : (
+    return (
       <Button
         className={cx(className, {
           [activeClassName || 'is-active']: isActive
@@ -539,7 +535,8 @@ export class Action extends React.Component<ActionProps, ActionState> {
         onClick={this.handleAction}
         type={type && ~allowedType.indexOf(type) ? type : 'button'}
         disabled={disabled}
-        componentClass={componentClass}
+        componentClass={isMenuItem ? 'a' : componentClass}
+        overrideClassName={isMenuItem}
         tooltip={filterContents(tooltip, data)}
         disabledTip={filterContents(disabledTip, data)}
         placement={tooltipPlacement}
@@ -557,8 +554,7 @@ export class Action extends React.Component<ActionProps, ActionState> {
 export default themeable(Action);
 
 @Renderer({
-  test: /(^|\/)action$/,
-  name: 'action'
+  type: 'action'
 })
 export class ActionRenderer extends React.Component<
   RendererProps &
@@ -608,19 +604,16 @@ export class ActionRenderer extends React.Component<
 }
 
 @Renderer({
-  test: /(^|\/)button$/,
-  name: 'button'
+  type: 'button'
 })
 export class ButtonRenderer extends ActionRenderer {}
 
 @Renderer({
-  test: /(^|\/)submit$/,
-  name: 'submit'
+  type: 'submit'
 })
 export class SubmitRenderer extends ActionRenderer {}
 
 @Renderer({
-  test: /(^|\/)reset$/,
-  name: 'reset'
+  type: 'reset'
 })
 export class ResetRenderer extends ActionRenderer {}

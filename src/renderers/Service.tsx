@@ -9,7 +9,7 @@ import Scoped, {ScopedContext, IScopedContext} from '../Scoped';
 import {observer} from 'mobx-react';
 import {isApiOutdated, isEffectiveApi} from '../utils/api';
 import {Spinner} from '../components';
-import {autobind, isVisible} from '../utils/helper';
+import {autobind, isEmpty, isVisible, qsstringify} from '../utils/helper';
 import {
   BaseSchema,
   SchemaApi,
@@ -18,6 +18,7 @@ import {
   SchemaMessage,
   SchemaName
 } from '../Schema';
+import {IIRendererStore} from '../store';
 
 /**
  * Service 服务类控件。
@@ -123,6 +124,7 @@ export default class Service extends React.Component<ServiceProps> {
 
     this.handleQuery = this.handleQuery.bind(this);
     this.handleAction = this.handleAction.bind(this);
+    this.handleChange = this.handleChange.bind(this);
     this.reload = this.reload.bind(this);
     this.silentReload = this.silentReload.bind(this);
     this.initInterval = this.initInterval.bind(this);
@@ -214,11 +216,25 @@ export default class Service extends React.Component<ServiceProps> {
     }
   }
 
-  afterDataFetch(data: any) {
+  afterDataFetch(result: any) {
+    // todo 应该统一这块
+    // 初始化接口返回的是整个 response，
+    // 保存 ajax 请求的时候返回时数据部分。
+    const data = result?.hasOwnProperty('ok') ? result.data : result;
+    const {onBulkChange, formStore} = this.props;
+    if (formStore && !isEmpty(data) && onBulkChange) {
+      onBulkChange(data);
+    }
+
     this.initInterval(data);
   }
 
   afterSchemaFetch(schema: any) {
+    const {onBulkChange, formStore} = this.props;
+    if (formStore && schema?.data && onBulkChange) {
+      onBulkChange(schema.data);
+    }
+
     this.initInterval(schema);
   }
 
@@ -350,6 +366,25 @@ export default class Service extends React.Component<ServiceProps> {
     }
   }
 
+  handleChange(
+    value: any,
+    name: string,
+    submit?: boolean,
+    changePristine?: boolean
+  ) {
+    const {store, formStore, onChange} = this.props;
+
+    // form 触发的 onChange,直接忽略
+    if (typeof name !== 'string') {
+      return;
+    }
+
+    (store as IIRendererStore).changeValue?.(name, value);
+
+    // 如果在form底下，则继续向上派送。
+    formStore && onChange?.(value, name, submit, changePristine);
+  }
+
   renderBody() {
     const {render, store, body: schema, classnames: cx} = this.props;
 
@@ -359,7 +394,8 @@ export default class Service extends React.Component<ServiceProps> {
           render('body', store.schema || schema, {
             key: store.schemaKey || 'body',
             onQuery: this.handleQuery,
-            onAction: this.handleAction
+            onAction: this.handleAction,
+            onChange: this.handleChange
           }) as JSX.Element
         }
       </div>
@@ -399,17 +435,40 @@ export default class Service extends React.Component<ServiceProps> {
 }
 
 @Renderer({
-  test: /(^|\/)service$/,
+  type: 'service',
   storeType: ServiceStore.name,
-  name: 'service'
+  isolateScope: true,
+  storeExtendsData: (props: any) => (props.formStore ? false : true)
 })
 export class ServiceRenderer extends Service {
   static contextType = ScopedContext;
 
-  componentWillMount() {
-    // super.componentWillMount();
-    const scoped = this.context as IScopedContext;
+  constructor(props: ServiceProps, context: IScopedContext) {
+    super(props);
+
+    const scoped = context;
     scoped.registerComponent(this);
+  }
+
+  reload(subpath?: string, query?: any, ctx?: any) {
+    const scoped = this.context as IScopedContext;
+    if (subpath) {
+      return scoped.reload(
+        query ? `${subpath}?${qsstringify(query)}` : subpath,
+        ctx
+      );
+    }
+
+    return super.reload(subpath, query);
+  }
+
+  receive(values: any, subPath?: string) {
+    const scoped = this.context as IScopedContext;
+    if (subPath) {
+      return scoped.send(subPath, values);
+    }
+
+    return super.receive(values);
   }
 
   componentWillUnmount() {

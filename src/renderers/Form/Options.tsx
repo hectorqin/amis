@@ -12,7 +12,9 @@ import {
   setVariable,
   spliceTree,
   findTreeIndex,
-  getTree
+  getTree,
+  isEmpty,
+  getTreeAncestors
 } from '../../utils/helper';
 import {reaction} from 'mobx';
 import {
@@ -20,8 +22,7 @@ import {
   registerFormItem,
   FormItemBasicConfig,
   detectProps as itemDetectProps,
-  FormBaseControl,
-  FormControlSchema
+  FormBaseControl
 } from './Item';
 import {IFormItemStore} from '../../store/formItem';
 export type OptionsControlComponent = React.ComponentType<FormControlProps>;
@@ -29,7 +30,8 @@ export type OptionsControlComponent = React.ComponentType<FormControlProps>;
 import React from 'react';
 import {
   resolveVariableAndFilter,
-  isPureVariable
+  isPureVariable,
+  dataMapping
 } from '../../utils/tpl-builtin';
 import {
   Option,
@@ -42,6 +44,7 @@ import findIndex from 'lodash/findIndex';
 import {
   SchemaApi,
   SchemaExpression,
+  SchemaObject,
   SchemaTokenizeableString
 } from '../../Schema';
 
@@ -123,7 +126,7 @@ export interface FormOptionsControl extends FormBaseControl {
   /**
    * 新增时的表单项。
    */
-  addControls?: Array<FormControlSchema>;
+  addControls?: Array<SchemaObject>;
 
   /**
    * 是否可以新增
@@ -148,7 +151,7 @@ export interface FormOptionsControl extends FormBaseControl {
   /**
    * 选项修改的表单项
    */
-  editControls?: Array<FormControlSchema>;
+  editControls?: Array<SchemaObject>;
 
   /**
    * 是否可删除
@@ -226,6 +229,7 @@ export interface OptionsProps
 }
 
 export const detectProps = itemDetectProps.concat([
+  'value',
   'options',
   'size',
   'buttons',
@@ -265,7 +269,9 @@ export function registerOptionsControl(config: OptionsConfig) {
     reaction?: () => void;
     input: any;
 
-    componentWillMount() {
+    constructor(props: OptionsProps) {
+      super(props);
+
       const {
         initFetch,
         formItem,
@@ -281,16 +287,20 @@ export function registerOptionsControl(config: OptionsConfig) {
         valueField,
         options,
         value,
-        onChange
-      } = this.props;
+        defaultCheckAll,
+      } = props;
 
       if (formItem) {
-        formItem.setOptions(normalizeOptions(options), onChange);
+        formItem.setOptions(normalizeOptions(options), this.changeOptionValue);
 
         this.reaction = reaction(
           () => JSON.stringify([formItem.loading, formItem.filteredOptions]),
           () => this.forceUpdate()
         );
+        // 默认全选。这里会和默认值\回填值逻辑冲突，所以如果有配置source则不执行默认全选
+        if (multiple && defaultCheckAll && options.length && !source) {
+          this.defaultCheckAll();
+        }
       }
 
       let loadOptions: boolean = initFetch !== false;
@@ -311,19 +321,25 @@ export function registerOptionsControl(config: OptionsConfig) {
 
       loadOptions &&
         config.autoLoadOptionsFromSource !== false &&
-        (formInited
+        (formInited || !addHook
           ? this.reload()
           : addHook && addHook(this.initOptions, 'init'));
     }
 
     componentDidMount() {
       this.normalizeValue();
+
+      if (this.props.value) {
+        this.syncAutoFill(this.props.value);
+      }
     }
 
     shouldComponentUpdate(nextProps: OptionsProps) {
       if (config.strictMode === false || nextProps.strictMode === false) {
         return true;
       } else if (nextProps.source || nextProps.autoComplete) {
+        return true;
+      } else if (nextProps.formItem?.expressionsInOptions) {
         return true;
       }
 
@@ -338,24 +354,15 @@ export function registerOptionsControl(config: OptionsConfig) {
       const props = this.props;
       const formItem = props.formItem as IFormItemStore;
 
-      if (!formItem || !props.formInited) {
-        return;
-      } else if (!prevProps.formItem) {
-        // todo 优化 name 变化情况。
-      }
-
-      if (prevProps.value !== props.value || formItem.expressionsInOptions) {
-        formItem.syncOptions();
-      }
-
       if (prevProps.options !== props.options && formItem) {
         formItem.setOptions(
           normalizeOptions(props.options || []),
-          props.onChange
+          this.changeOptionValue
         );
         this.normalizeValue();
       } else if (
         config.autoLoadOptionsFromSource !== false &&
+        props.formInited &&
         props.source &&
         formItem &&
         (prevProps.source !== props.source || prevProps.data !== props.data)
@@ -375,7 +382,7 @@ export function registerOptionsControl(config: OptionsConfig) {
           if (prevOptions !== options) {
             formItem.setOptions(
               normalizeOptions(options || []),
-              props.onChange
+              this.changeOptionValue
             );
             this.normalizeValue();
           }
@@ -394,18 +401,62 @@ export function registerOptionsControl(config: OptionsConfig) {
               props.data,
               undefined,
               true,
-              props.onChange
+              this.changeOptionValue
             )
             .then(() => this.normalizeValue());
         }
       }
+
+      if (prevProps.value !== props.value || formItem?.expressionsInOptions) {
+        formItem.syncOptions();
+        this.syncAutoFill(props.value);
+      }
     }
 
     componentWillUnmount() {
-      this.props.removeHook && this.props.removeHook(this.reload, 'init');
-      this.reaction && this.reaction();
+      this.props.removeHook?.(this.reload, 'init');
+      this.reaction?.();
     }
 
+    syncAutoFill(value: any) {
+      const {autoFill, multiple, onBulkChange} = this.props;
+      const formItem = this.props.formItem as IFormItemStore;
+
+      if (autoFill && !isEmpty(autoFill) && formItem.filteredOptions.length) {
+        const selectedOptions = formItem.getSelectedOptions(value);
+        const toSync = dataMapping(
+          autoFill,
+          multiple
+            ? {
+                items: selectedOptions.map(item =>
+                  createObject(
+                    {
+                      ancestors: getTreeAncestors(
+                        formItem.filteredOptions,
+                        item,
+                        true
+                      )
+                    },
+                    item
+                  )
+                )
+              }
+            : createObject(
+                {
+                  ancestors: getTreeAncestors(
+                    formItem.filteredOptions,
+                    selectedOptions[0],
+                    true
+                  )
+                },
+                selectedOptions[0]
+              )
+        );
+        onBulkChange?.(toSync);
+      }
+    }
+
+    // 当前值，跟设置预期的值格式不一致时自动转换。
     normalizeValue() {
       const {
         joinValues,
@@ -413,7 +464,8 @@ export function registerOptionsControl(config: OptionsConfig) {
         value,
         multiple,
         formItem,
-        valueField
+        valueField,
+        onChange
       } = this.props;
 
       if (!formItem || joinValues !== false || !formItem.options.length) {
@@ -425,9 +477,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         (typeof value === 'string' || typeof value === 'number')
       ) {
         const selectedOptions = formItem.getSelectedOptions(value);
-        formItem.changeValue(
-          multiple ? selectedOptions.concat() : selectedOptions[0]
-        );
+        onChange?.(multiple ? selectedOptions.concat() : selectedOptions[0]);
       } else if (
         extractValue === true &&
         value &&
@@ -445,9 +495,7 @@ export function registerOptionsControl(config: OptionsConfig) {
           .map(
             (selectedOption: Option) => selectedOption[valueField || 'value']
           );
-        formItem.changeValue(
-          multiple ? selectedOptions.concat() : selectedOptions[0]
-        );
+        onChange?.(multiple ? selectedOptions.concat() : selectedOptions[0]);
       }
     }
 
@@ -480,32 +528,39 @@ export function registerOptionsControl(config: OptionsConfig) {
       onChange && onChange(newValue, submitOnChange, changeImmediately);
     }
 
-    @autobind
-    handleToggleAll() {
+    /**
+     * 初始化时处理默认全选逻辑
+     */
+    defaultCheckAll() {
       const {
         value,
-        onChange,
+        formItem,
+        setPrinstineValue
+      } = this.props;
+      // 如果有默认值\回填值直接返回
+      if (!formItem || formItem.getSelectedOptions(value).length) {
+        return;
+      }
+      let valueArray = formItem.filteredOptions.concat();
+      const newValue = this.formatValueArray(valueArray);
+      setPrinstineValue?.(newValue);
+    }
+
+    /**
+     * 选中的值经过joinValues和delimiter等规则处理输出规定格式的值
+     * @param valueArray 选中值的数组
+     * @returns 通过joinValues和delimiter等规则输出规定格式的值
+     */
+    formatValueArray(valueArray: Array<Option>) {
+      const {
         joinValues,
         extractValue,
         valueField,
         delimiter,
         resetValue,
-        multiple,
-        formItem
+        multiple
       } = this.props;
-
-      if (!formItem) {
-        return;
-      }
-
-      const selectedOptions = formItem.getSelectedOptions(value);
-      let valueArray =
-        selectedOptions.length === formItem.filteredOptions.length
-          ? []
-          : formItem.filteredOptions.concat();
-
       let newValue: string | Array<Option> | Option = '';
-
       if (multiple) {
         newValue = valueArray;
 
@@ -525,7 +580,26 @@ export function registerOptionsControl(config: OptionsConfig) {
           newValue = (newValue as any)[valueField || 'value'];
         }
       }
+      return newValue;
+    }
 
+    @autobind
+    handleToggleAll() {
+      const {
+        value,
+        onChange,
+        formItem
+      } = this.props;
+
+      if (!formItem) {
+        return;
+      }
+      const selectedOptions = formItem.getSelectedOptions(value);
+      let valueArray =
+        selectedOptions.length === formItem.filteredOptions.length
+          ? []
+          : formItem.filteredOptions.concat();
+      const newValue = this.formatValueArray(valueArray);
       onChange && onChange(newValue);
     }
 
@@ -610,7 +684,7 @@ export function registerOptionsControl(config: OptionsConfig) {
             normalizeOptions(
               resolveVariableAndFilter(source as string, data, '| raw') || []
             ),
-            onChange
+            this.changeOptionValue
           );
         return;
       } else if (!formItem || !isEffectiveApi(source, data)) {
@@ -647,12 +721,17 @@ export function registerOptionsControl(config: OptionsConfig) {
     @autobind
     async initOptions(data: any) {
       await this.reloadOptions(false, true);
-      const {formItem, name} = this.props;
+      const {formItem, name, multiple, defaultCheckAll, options} = this.props;
       if (!formItem) {
         return;
       }
       if (isAlive(formItem) && formItem.value) {
         setVariable(data, name!, formItem.value);
+      }
+
+      // 默认全选
+      if (multiple && defaultCheckAll && options.length) {
+        this.defaultCheckAll();
       }
     }
 
@@ -661,12 +740,28 @@ export function registerOptionsControl(config: OptionsConfig) {
     }
 
     @autobind
+    changeOptionValue(value: any) {
+      const {
+        onChange,
+        formInited,
+        setPrinstineValue,
+        value: originValue
+      } = this.props;
+
+      if (formInited === false) {
+        originValue === undefined && setPrinstineValue?.(value);
+      } else {
+        onChange?.(value);
+      }
+    }
+
+    @autobind
     setOptions(options: Array<any>, skipNormalize = false) {
       const formItem = this.props.formItem as IFormItemStore;
       formItem &&
         formItem.setOptions(
           skipNormalize ? options : normalizeOptions(options || []),
-          this.props.onChange
+          this.changeOptionValue
         );
     }
 
@@ -799,7 +894,7 @@ export function registerOptionsControl(config: OptionsConfig) {
             ? options.splice(idx, 0, {...result})
             : options.push({...result});
         }
-        model.setOptions(options, this.props.onChange);
+        model.setOptions(options, this.changeOptionValue);
       }
     }
 
@@ -884,7 +979,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         return;
       }
 
-      if (source && !editApi) {
+      if (source && editApi) {
         this.reload();
       } else {
         const indexes = findTreeIndex(model.options, item => item === origin);
@@ -895,7 +990,7 @@ export function registerOptionsControl(config: OptionsConfig) {
               ...origin,
               ...result
             }),
-            this.props.onChange
+            this.changeOptionValue
           );
         }
       }
@@ -945,14 +1040,16 @@ export function registerOptionsControl(config: OptionsConfig) {
           this.reload();
         } else {
           const options = model.options.concat();
-          const idx = findIndex(
+          const indexes = findTreeIndex(
             options,
             item => item[valueField || 'value'] == value[valueField || 'value']
           );
 
-          if (~idx) {
-            options.splice(idx, 1);
-            model.setOptions(options, this.props.onChange);
+          if (indexes) {
+            model.setOptions(
+              spliceTree(options, indexes, 1),
+              this.changeOptionValue
+            );
           }
         }
       } catch (e) {

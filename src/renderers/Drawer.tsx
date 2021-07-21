@@ -4,7 +4,12 @@ import {Renderer, RendererProps} from '../factory';
 import {SchemaNode, Schema, Action} from '../types';
 import {default as DrawerContainer} from '../components/Drawer';
 import findLast from 'lodash/findLast';
-import {guid, isVisible, autobind} from '../utils/helper';
+import {
+  guid,
+  isVisible,
+  autobind,
+  isObjectShallowModified
+} from '../utils/helper';
 import {reaction} from 'mobx';
 import {findDOMNode} from 'react-dom';
 import {IModalStore, ModalStore} from '../store/modal';
@@ -18,6 +23,7 @@ import {
   SchemaName
 } from '../Schema';
 import {ActionSchema} from './Action';
+import {isAlive} from 'mobx-state-tree';
 
 /**
  * Drawer 抽出式弹框。
@@ -130,6 +136,7 @@ export default class Drawer extends React.Component<DrawerProps> {
     'title',
     'size',
     'closeOnEsc',
+    'closeOnOutside',
     'children',
     'bodyClassName',
     'confirm',
@@ -151,6 +158,7 @@ export default class Drawer extends React.Component<DrawerProps> {
     resizable: false,
     overlay: true,
     closeOnEsc: false,
+    closeOnOutside: false,
     showErrorMsg: true
   };
 
@@ -172,14 +180,12 @@ export default class Drawer extends React.Component<DrawerProps> {
     this.bindResize = this.bindResize.bind(this);
     this.removeResize = this.removeResize.bind(this);
     this.handleEntered = this.handleEntered.bind(this);
-    this.handleExisted = this.handleExisted.bind(this);
+    this.handleExited = this.handleExited.bind(this);
     this.handleFormInit = this.handleFormInit.bind(this);
     this.handleFormChange = this.handleFormChange.bind(this);
     this.handleFormSaved = this.handleFormSaved.bind(this);
-  }
 
-  componentWillMount() {
-    const store = this.props.store;
+    const store = props.store;
     this.reaction = reaction(
       () => `${store.loading}${store.error}`,
       () => this.forceUpdate()
@@ -211,7 +217,7 @@ export default class Drawer extends React.Component<DrawerProps> {
     ret.push({
       type: 'button',
       actionType: 'close',
-      label: __('cancle')
+      label: __('cancel')
     });
 
     if (confirm) {
@@ -324,8 +330,14 @@ export default class Drawer extends React.Component<DrawerProps> {
     store.setFormData(data);
   }
 
-  handleFormChange(data: any) {
+  handleFormChange(data: any, name?: string) {
     const {store} = this.props;
+
+    if (typeof name === 'string') {
+      data = {
+        [name]: data
+      };
+    }
 
     store.setFormData(data);
   }
@@ -348,10 +360,15 @@ export default class Drawer extends React.Component<DrawerProps> {
     }
   }
 
-  handleExisted() {
-    const store = this.props.store;
-    store.reset();
-    store.setEntered(false);
+  handleExited() {
+    const {lazySchema, store} = this.props;
+    if (isAlive(store)) {
+      store.reset();
+      store.setEntered(false);
+      if (typeof lazySchema === 'function') {
+        store.setSchema('');
+      }
+    }
   }
 
   @autobind
@@ -554,7 +571,7 @@ export default class Drawer extends React.Component<DrawerProps> {
         position={position}
         overlay={overlay}
         onEntered={this.handleEntered}
-        onExisted={this.handleExisted}
+        onExited={this.handleExited}
         closeOnEsc={closeOnEsc}
         closeOnOutside={
           !store.drawerOpen && !store.dialogOpen && closeOnOutside
@@ -582,9 +599,15 @@ export default class Drawer extends React.Component<DrawerProps> {
             : null}
         </div>
 
-        <div className={cx('Drawer-body', bodyClassName)}>
-          {body ? this.renderBody(body, 'body') : null}
-        </div>
+        {!store.entered ? (
+          <div className={cx('Drawer-body', bodyClassName)}>
+            <Spinner overlay show size="lg" />
+          </div>
+        ) : body ? (
+          <div className={cx('Drawer-body', bodyClassName)}>
+            {this.renderBody(body, 'body')}
+          </div>
+        ) : null}
 
         {this.renderFooter()}
 
@@ -633,21 +656,25 @@ export default class Drawer extends React.Component<DrawerProps> {
 }
 
 @Renderer({
-  test: /(^|\/)drawer$/,
+  type: 'drawer',
   storeType: ModalStore.name,
   storeExtendsData: false,
-  name: 'drawer',
   isolateScope: true,
-  shouldSyncSuperStore: (store: IServiceStore, props: any) =>
-    store.drawerOpen || props.show
+  shouldSyncSuperStore: (store: IServiceStore, props: any, prevProps: any) =>
+    !!(
+      (store.drawerOpen || props.show) &&
+      (props.show !== prevProps.show ||
+        isObjectShallowModified(prevProps.data, props.data))
+    )
 })
 export class DrawerRenderer extends Drawer {
   static contextType = ScopedContext;
 
-  componentWillMount() {
-    const scoped = this.context as IScopedContext;
+  constructor(props: DrawerProps, context: IScopedContext) {
+    super(props);
+    const scoped = context;
+
     scoped.registerComponent(this);
-    super.componentWillMount();
   }
 
   componentWillUnmount() {
@@ -663,7 +690,6 @@ export class DrawerRenderer extends Drawer {
       return false;
     }
 
-    const components = scoped.getComponents();
     const targets: Array<any> = [];
     const {onConfirm, store} = this.props;
 
@@ -677,26 +703,31 @@ export class DrawerRenderer extends Drawer {
     }
 
     if (!targets.length) {
-      const page = findLast(
-        components,
-        component => component.props.type === 'page'
-      );
+      let components = scoped
+        .getComponents()
+        .filter(item => !~['drawer', 'dialog'].indexOf(item.props.type));
 
-      if (page) {
-        components.push(...page.context.getComponents());
+      // 如果是纯容器组件，则进到里面去找。
+      while (
+        components.length === 1 &&
+        ~['page', 'service'].indexOf(components[0].props.type)
+      ) {
+        components = components[0].context
+          .getComponents()
+          .filter(
+            (item: any) => !~['drawer', 'dialog'].indexOf(item.props.type)
+          );
       }
 
-      const form = findLast(
-        components,
-        component => component.props.type === 'form'
-      );
-      form && targets.push(form);
+      // 优先最下面的，找到一个功能组件，就交给这个功能组件。
+      for (let i = components.length - 1; i >= 0; i--) {
+        const component = components[i];
 
-      const crud = findLast(
-        components,
-        component => component.props.type === 'crud'
-      );
-      crud && targets.push(crud);
+        if (~['crud', 'form', 'wizard'].indexOf(component.props.type)) {
+          targets.push(component);
+          break;
+        }
+      }
     }
 
     if (targets.length) {

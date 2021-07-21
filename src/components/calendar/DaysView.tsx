@@ -2,6 +2,7 @@ import moment from 'moment';
 // @ts-ignore
 import DaysView from 'react-datetime/src/DaysView';
 import React from 'react';
+import Downshift from 'downshift';
 import {LocaleProps, localeable} from '../../locale';
 import {ClassNamesFn} from '../../theme';
 
@@ -113,6 +114,17 @@ export class CustomDaysView extends DaysView {
     return <td {...props}>{currentDate.date()}</td>;
   };
 
+  computedTimeOptions(total: number) {
+    const times: {label: string; value: string}[] = [];
+
+    for(let t = 0; t < total; t++) {
+      const label = t < 10 ? `0${t}` : `${t}`;
+      times.push({label, value: label});
+    }
+
+    return times;
+  }
+
   renderTimes = () => {
     const {
       timeFormat,
@@ -133,28 +145,66 @@ export class CustomDaysView extends DaysView {
         : 'seconds';
       const min = 0;
       const max = type === 'hours' ? 23 : 59;
+      const hours = this.computedTimeOptions(24);
+      const times = this.computedTimeOptions(60);
+      const options = type === 'hours' ? hours : times;
 
       inputs.push(
-        <input
+        <Downshift
           key={i + 'input'}
-          type="text"
-          value={date.format(format)}
-          className={cx('CalendarInput')}
-          min={min}
-          max={max}
-          onChange={e =>
-            this.setTime(
-              type,
-              Math.max(
-                min,
-                Math.min(
-                  parseInt(e.currentTarget.value.replace(/\D/g, ''), 10) || 0,
-                  max
+          inputValue={date.format(format)}
+        >
+          {({isOpen, getInputProps, openMenu, closeMenu}) => {
+            const inputProps = getInputProps({
+              onFocus: () => openMenu(),
+              onChange: e => this.setTime(
+                type,
+                Math.max(
+                  min,
+                  Math.min(
+                    parseInt(e.currentTarget.value.replace(/\D/g, ''), 10) || 0,
+                    max
+                  )
                 )
               )
+            })
+            return (
+              <div className={cx('CalendarInputWrapper')}>
+                <input
+                  type="text"
+                  value={date.format(format)}
+                  className={cx('CalendarInput')}
+                  min={min}
+                  max={max}
+                  {...inputProps}
+                />
+                {
+                  isOpen ? (
+                    <div className={cx('CalendarInput-sugs')}>
+                      {options.map(option => {
+                        return (
+                          <div
+                            key={option.value}
+                            className={cx('CalendarInput-sugsItem', {
+                              'is-highlight': option.value === date.format(format)
+                            })}
+                            onClick={() => {
+                              this.setTime(
+                                type,
+                                parseInt(option.value, 10)
+                              );
+                              closeMenu();
+                            }}
+                          >{option.value}</div>
+                        )
+                      })}
+                    </div>
+                  ) : null
+                }
+              </div>
             )
-          }
-        />
+          }}
+        </Downshift>
       );
 
       inputs.push(<span key={i + 'divider'}>:</span>);
@@ -170,7 +220,7 @@ export class CustomDaysView extends DaysView {
       return null;
     }
 
-    const __ = this.props.translate;
+    const {translate: __, classnames: cx} = this.props;
 
     return (
       <tfoot key="tf">
@@ -179,11 +229,17 @@ export class CustomDaysView extends DaysView {
             {this.props.timeFormat ? this.renderTimes() : null}
             {this.props.requiredConfirm ? (
               <div key="button" className="rdtActions">
-                <a className="rdtBtn rdtBtnConfirm" onClick={this.confirm}>
-                  {__('confirm')}
+                <a
+                  className={cx('Button', 'Button--default')}
+                  onClick={this.cancel}
+                >
+                  {__('cancel')}
                 </a>
-                <a className="rdtBtn rdtBtnCancel" onClick={this.cancel}>
-                  {__('cancle')}
+                <a
+                  className={cx('Button', 'Button--primary', 'm-l-sm')}
+                  onClick={this.confirm}
+                >
+                  {__('confirm')}
                 </a>
               </div>
             ) : null}

@@ -17,7 +17,6 @@ register('en-US', {
   'Combo.minLength': 'A least {{minLength}} item. Please add more',
   'Combo.type': 'Type',
   'confirm': 'Confirm',
-  'cancle': 'Cancel',
   'Copyable.tip': 'Copy',
   'CRUD.exportCSV': 'Export CSV',
   'CRUD.exportExcel': 'Export Excel',
@@ -35,6 +34,7 @@ register('en-US', {
   'Date.daysago': '{{days}} day(s) ago',
   'Date.dayslater': '{{days}} day(s) later',
   'Date.endOfMonth': 'last day of the month',
+  'Date.endOfLastMonth': 'last day of last month',
   'Date.endOfWeek': 'Saturday',
   'Date.hoursago': '{{hours}} hour(s) ago',
   'Date.hourslater': '{{hours}} hour(s) later',
@@ -201,5 +201,6 @@ register('en-US', {
   'Wizard.prev': 'Prev',
   'Wizard.saveAndNext': 'Save & Next',
   'year-to-year': '{{from}} - {{to}}',
-  'Year.placeholder': 'Select a Year'
+  'Year.placeholder': 'Select a Year',
+  'rotate': 'Rotate'
 });

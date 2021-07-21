@@ -50,7 +50,17 @@ API 类型用于配置请求接口的格式，涉及请求方式、请求地址�
 - **msg**: 返回接口处理信息，主要用于表单提交或请求失败时的 `toast` 显示；
 - **data**: 必须返回一个具有 `key-value` 结构的对象。
 
-**`status`**、**`msg`** 和 **`data`** 字段为接口返回的必要字段；
+**`status`**、**`msg`** 和 **`data`** 字段为接口返回的必要字段。
+
+> 1.1.7
+
+为了方便更多场景使用，还兼容了以下这些错误返回格式：
+
+1. errorCode 作为 status、errorMessage 作为 msg
+2. errno 作为 status、errmsg/errstr 作为 msg
+3. error 作为 status、errmsg 作为 msg
+4. error.code 作为 status、error.message 作为 msg
+5. message 作为 msg
 
 ### 正确的格式
 
@@ -140,15 +150,15 @@ API 还支持配置对象类型
         }
 
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "email",
+        "type": "input-email",
         "label": "邮箱："
       }
     ]
@@ -191,15 +201,15 @@ API 还支持配置对象类型
             "&": "$$$$" // 获取表单数据域中的所有值
         }
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "email",
+        "type": "input-email",
         "label": "邮箱："
       }
     ]
@@ -218,15 +228,15 @@ API 还支持配置对象类型
         "url": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
         "dataType": "form"
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "email",
+        "type": "input-email",
         "label": "邮箱："
       }
     ]
@@ -245,15 +255,15 @@ API 还支持配置对象类型
         "url": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
         "dataType": "form-data"
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "email",
+        "type": "input-email",
         "label": "邮箱："
       }
     ]
@@ -269,15 +279,15 @@ API 还支持配置对象类型
         "method": "post",
         "url": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm"
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "file",
-        "type": "file",
+        "type": "input-file",
         "label": "附件：",
         "asBlob": true
       }
@@ -301,15 +311,15 @@ API 还支持配置对象类型
             "my-header": "aaa"
         }
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "email",
+        "type": "input-email",
         "label": "邮箱："
       }
     ]
@@ -325,7 +335,7 @@ API 还支持配置对象类型
     "title": "",
     "type": "form",
     "mode": "horizontal",
-    "controls": [
+    "body": [
       {
         "label": "选项1",
         "type": "radios",
@@ -532,15 +542,15 @@ function (api) {
         "url": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
         "requestAdaptor": "return {\n    ...api,\n    data: {\n        ...api.data,    // 获取暴露的 api 中的 data 变量\n        foo: 'bar'      // 新添加数据\n    }\n}"
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "email",
+        "type": "input-email",
         "label": "邮箱："
       }
     ]
@@ -583,15 +593,15 @@ const schema = {
       };
     }
   },
-  controls: [
+  body: [
     {
-      type: 'text',
+      type: 'input-text',
       name: 'name',
       label: '姓名：'
     },
     {
       name: 'text',
-      type: 'email',
+      type: 'input-email',
       label: '邮箱：'
     }
   ]
@@ -624,7 +634,7 @@ const schema = {
 字符串形式实际上可以认为是外层包裹了一层函数，你需要补充内部的函数实现，并将修改好的 `payload` 对象 `return` 出去：
 
 ```js
-function (payload, responsee) {
+function (payload, response) {
   // 你的适配器代码
 }
 ```
@@ -639,15 +649,15 @@ function (payload, responsee) {
     "url": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
     "adaptor": "return {\n    ...payload,\n    status: payload.code === 200 ? 0 : payload.code\n}"
   },
-  "controls": [
+  "body": [
     {
-      "type": "text",
+      "type": "input-text",
       "name": "name",
       "label": "姓名："
     },
     {
       "name": "file",
-      "type": "file",
+      "type": "input-file",
       "label": "附件：",
       "asBlob": true
     }
@@ -685,15 +695,15 @@ const schema = {
       };
     }
   },
-  controls: [
+  body: [
     {
-      type: 'text',
+      type: 'input-text',
       name: 'name',
       label: '姓名：'
     },
     {
       name: 'email',
-      type: 'email',
+      type: 'input-email',
       label: '邮箱：'
     }
   ]
@@ -749,7 +759,7 @@ Content-Disposition: attachment; filename="download.pdf"
   "title": "监听表单内部的修改",
   "initApi": "/api/mock2/form/initData?tpl=${tpl}",
   "actions": [],
-  "controls": [
+  "body": [
     {
       "label": "数据模板",
       "type": "select",
@@ -815,7 +825,7 @@ Content-Disposition: attachment; filename="download.pdf"
     "title": "",
     "type": "form",
     "mode": "horizontal",
-    "controls": [
+    "body": [
       {
         "label": "选项1",
         "type": "radios",

@@ -4,6 +4,7 @@ import QuickEdit from '../QuickEdit';
 import Copyable from '../Copyable';
 import PopOverable from '../PopOver';
 import {observer} from 'mobx-react';
+import omit = require('lodash/omit');
 
 export interface TableCellProps extends RendererProps {
   wrapperComponent?: React.ReactType;
@@ -55,10 +56,16 @@ export class TableCell extends React.Component<RendererProps> {
       type: (column && column.type) || 'plain'
     };
 
+    // 如果本来就是 type 为 button，不要删除，其他情况下都应该删除。
+    if (schema.type !== 'button' && schema.type !== 'dropdown-button') {
+      delete schema.label;
+    }
+
     let body = children
       ? children
       : render('field', schema, {
-          ...rest,
+          ...omit(rest, Object.keys(schema)),
+          inputOnly: true,
           value,
           data
         });
@@ -129,7 +136,7 @@ export class TableCellRenderer extends TableCell {
 }
 
 @Renderer({
-  test: /(^|\/)field$/,
+  type: 'field',
   name: 'field'
 })
 @PopOverable()

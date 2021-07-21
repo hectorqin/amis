@@ -1,9 +1,14 @@
 import Spinner from '../components/Spinner';
 import {Renderer, RendererProps} from '../factory';
 import React from 'react';
-import {BaseSchema} from '../Schema';
+import {BaseSchema, SchemaClassName} from '../Schema';
 import SearchBox from '../components/SearchBox';
-import {autobind, getVariable, setVariable} from '../utils/helper';
+import {
+  autobind,
+  getPropValue,
+  getVariable,
+  setVariable
+} from '../utils/helper';
 
 /**
  * 搜索框渲染器
@@ -17,11 +22,21 @@ export interface SearchBoxSchema extends BaseSchema {
   type: 'search-box';
 
   /**
+   * 外层 css 类名
+   */
+  className?: SchemaClassName;
+
+  /**
    * 关键字名字。
    *
    * @default keywords
    */
   name?: string;
+
+  /**
+   * 占位符
+   */
+  placeholder?: string;
 
   /**
    * 是否为 Mini 样式。
@@ -42,8 +57,7 @@ interface SearchBoxProps
 }
 
 @Renderer({
-  test: /(^|\/)search\-box$/,
-  name: 'search'
+  type: 'search-box'
 })
 export class SearchBoxRenderer extends React.Component<SearchBoxProps> {
   static defaultProps = {
@@ -58,9 +72,12 @@ export class SearchBoxRenderer extends React.Component<SearchBoxProps> {
   handleCancel() {
     const name = this.props.name;
     const onQuery = this.props.onQuery;
-    const data: any = {};
-    setVariable(data, name, '');
-    onQuery?.(data);
+    const value = getPropValue(this.props);
+    if (value !== '') {
+      const data: any = {};
+      setVariable(data, name, '');
+      onQuery?.(data);
+    }
   }
 
   @autobind
@@ -72,19 +89,33 @@ export class SearchBoxRenderer extends React.Component<SearchBoxProps> {
   }
 
   render() {
-    const {data, name, onQuery: onQuery, mini, searchImediately} = this.props;
+    const {
+      data,
+      name,
+      onQuery: onQuery,
+      mini,
+      searchImediately,
+      placeholder,
+      onChange,
+      className
+    } = this.props;
 
-    const value = getVariable(data, name);
+    const value = getPropValue(this.props);
+
     return (
       <SearchBox
+        className={className}
         name={name}
         disabled={!onQuery}
         defaultActive={!!value}
-        defaultValue={value}
+        defaultValue={onChange ? undefined : value}
+        value={onChange ? value : undefined}
         mini={mini}
         searchImediately={searchImediately}
         onSearch={this.handleSearch}
         onCancel={this.handleCancel}
+        placeholder={placeholder}
+        onChange={onChange}
       />
     );
   }

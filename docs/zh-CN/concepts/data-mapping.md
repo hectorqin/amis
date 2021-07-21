@@ -71,15 +71,15 @@ order: 12
 {
     "type": "form",
     "api": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "text",
+        "type": "input-text",
         "label": "邮箱："
       }
     ]
@@ -117,15 +117,15 @@ order: 12
             "userEmail": "${email}"
         }
     },
-    "controls": [
+    "body": [
       {
-        "type": "text",
+        "type": "input-text",
         "name": "name",
         "label": "姓名："
       },
       {
         "name": "email",
-        "type": "text",
+        "type": "input-text",
         "label": "邮箱："
       }
     ]
@@ -172,15 +172,15 @@ order: 12
       "g": "${c.g}"
     }
   },
-  "controls": [
+  "body": [
     {
-      "type": "text",
+      "type": "input-text",
       "name": "name",
       "label": "姓名："
     },
     {
       "name": "email",
-      "type": "text",
+      "type": "input-text",
       "label": "邮箱："
     }
   ]
@@ -222,15 +222,15 @@ order: 12
       "&": "${c}"
     }
   },
-  "controls": [
+  "body": [
     {
-      "type": "text",
+      "type": "input-text",
       "name": "name",
       "label": "姓名："
     },
     {
       "name": "email",
-      "type": "text",
+      "type": "input-text",
       "label": "邮箱："
     }
   ]
@@ -276,9 +276,9 @@ order: 12
             }
         }
     },
-    "controls": [
+    "body": [
       {
-        "type": "table",
+        "type": "input-table",
         "name": "table",
         "label": "table",
         "columns": [
@@ -521,10 +521,10 @@ ${xxx | toFloat}
 ${xxx | date[:format][:inputFormat]}
 ```
 
-- **format**：需要展示的格式，默认为`'LLL'`，即本地化时间格式
-- **inputFormat**：指定该变量值的格式，默认为`'X'`，即时间戳
-
-具体参数的配置需要参考 [moment](https://momentjs.com/docs/)
+- **format**：需要展示的格式，默认为`LLL`，即本地化时间格式
+- **inputFormat**：指定该变量值的格式，默认为`X`，即时间戳秒，具体参数的配置需要参考 [moment](https://momentjs.com/docs/)，下面是其它几种常见的格式：
+  - `x`，毫秒
+  - `YYYY-MM-DDTHH:mm:ssZ`，ISO8601 格式，其中 YYYY 是年，MM 是月，DD 是日，HH 是小时，mm 是分钟，ss 是秒
 
 ```schema
 {
@@ -534,7 +534,20 @@ ${xxx | date[:format][:inputFormat]}
   },
   "body": {
     "type": "tpl",
-    "tpl": "now is ${now|date}" // 输出: now is 2020年4月14日晚上7点59分
+    "tpl": "now is ${now|date}"
+  }
+}
+```
+
+```schema
+{
+  "type": "page",
+  "data": {
+    "now": 1586865590000
+  },
+  "body": {
+    "type": "tpl",
+    "tpl": "毫秒 ${now|date:LLL:x}"
   }
 }
 ```
@@ -599,7 +612,7 @@ ${_|now}
 将 xxx 修改成 7 天前，假如值是 10 月 8 号，那么处理完后就是 10 月 1 号。
 
 ```
-${xxx | dateModify:substract:-7:day}
+${xxx | dateModify:subtract:-7:day}
 ```
 
 来个高级点的，比如我想返回个上个月开头的第一天。
@@ -607,7 +620,7 @@ ${xxx | dateModify:substract:-7:day}
 ```schema
 {
   "type": "page",
-  "body": "上个月第一天是：${_|now|dateModify:substract:1:month|dateModify:startOf:month|date:YYYY-MM-DD HH\\:mm\\:ss}"
+  "body": "上个月第一天是：${_|now|dateModify:subtract:1:month|dateModify:startOf:month|date:YYYY-MM-DD HH\\:mm\\:ss}"
 }
 ```
 
@@ -869,7 +882,7 @@ ${xxx | join[:glue]}
 
 ### topAndOther
 
-取前多少个，身下的归位一组比如：`${list|topAndOther:10:name:Others}`
+取前多少个，剩下的归位一组比如：`${list|topAndOther:10:name:Others}`
 
 对数组分为 10 组，前面 9 组分别拿前 9 个，最后一组将剩下的归为一组，并对每项做数字累加。
 
@@ -1562,10 +1575,59 @@ ${xxx | isEquals[:equalsValue][:trueValue][:falseValue]
 ##### 基本用法
 
 ```
-${xxx | notEquals[:equalsValue][:trueValue][:falseValue]
+${xxx | notEquals[:equalsValue][:trueValue][:falseValue]}
 ```
 
 用法与 [isEquals](#isEquals) 相同，判断逻辑相反。
+
+### map
+
+数组操作，操作对象为数组，当目标对象不是数组或者 mapFn(filterName) 不存在时将无效。
+
+##### 基本用法
+
+```
+${xxx | map[:filterName][:...args]}
+```
+
+```schema
+{
+  "type": "page",
+  "body": {
+    "type": "form",
+    "mode": "horizontal",
+    "api": {
+      "method": "post",
+      "url": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
+      "data": {
+        "test": "${combo2|pick:text|map:toInt|map:date:LLL:x}"
+      }
+    },
+    "body": [
+      {
+        "type": "combo",
+        "name": "combo2",
+        "label": "Combo 多选展示",
+        "multiple": true,
+        "value": [
+          {
+            "text": "1586865590000"
+          },
+          {
+            "text": "2696865590000"
+          }
+        ],
+        "items": [
+          {
+            "name": "text",
+            "type": "text"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ### filter
 

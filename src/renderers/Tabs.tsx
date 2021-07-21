@@ -7,7 +7,8 @@ import {
   autobind,
   isDisabled,
   isObject,
-  createObject
+  createObject,
+  getVariable
 } from '../utils/helper';
 import findIndex from 'lodash/findIndex';
 import {Tabs as CTabs, Tab} from '../components/Tabs';
@@ -20,7 +21,8 @@ import {
 } from '../Schema';
 import {ActionSchema} from './Action';
 import {filter} from '../utils/tpl';
-import {resolveVariable} from '../utils/tpl-builtin';
+import {resolveVariable, tokenize} from '../utils/tpl-builtin';
+import {FormSchemaHorizontal} from './Form/index';
 
 export interface TabSchema extends Omit<BaseSchema, 'type'> {
   /**
@@ -70,6 +72,15 @@ export interface TabSchema extends Omit<BaseSchema, 'type'> {
    * 卡片隐藏就销毁卡片节点。
    */
   unmountOnExit?: boolean;
+
+  /**
+   * 配置子表单项默认的展示方式。
+   */
+  mode?: 'normal' | 'inline' | 'horizontal';
+  /**
+   * 如果是水平排版，这个属性可以细化水平排版的左右宽度占比。
+   */
+  horizontal?: FormSchemaHorizontal;
 }
 
 /**
@@ -105,6 +116,11 @@ export interface TabsSchema extends BaseSchema {
   contentClassName?: SchemaClassName;
 
   /**
+   * 链接外层类名
+   */
+  linksClassName?: SchemaClassName;
+
+  /**
    * 卡片是否只有在点开的时候加载？
    */
   mountOnEnter?: boolean;
@@ -118,6 +134,15 @@ export interface TabsSchema extends BaseSchema {
    * 可以在右侧配置点其他功能按钮。
    */
   toolbar?: ActionSchema;
+
+  /**
+   * 配置子表单项默认的展示方式。
+   */
+  subFormMode?: 'normal' | 'inline' | 'horizontal';
+  /**
+   * 如果是水平排版，这个属性可以细化水平排版的左右宽度占比。
+   */
+  subFormHorizontal?: FormSchemaHorizontal;
 }
 
 export interface TabsProps
@@ -156,7 +181,14 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
     } else if (location && Array.isArray(tabs)) {
       const hash = location.hash.substring(1);
       const tab: TabSchema = find(tabs, tab => tab.hash === hash) as TabSchema;
-      activeKey = tab && tab.hash ? tab.hash : (tabs[0] && tabs[0].hash) || 0;
+
+      if (tab) {
+        activeKey = tab.hash;
+      } else if (props.defaultActiveKey) {
+        activeKey = tokenize(props.defaultActiveKey, props.data);
+      }
+
+      activeKey = activeKey || (tabs[0] && tabs[0].hash) || 0;
     }
 
     this.state = {
@@ -167,6 +199,31 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
 
   componentDidMount() {
     this.autoJumpToNeighbour(this.activeKey);
+
+    let {name, value, onChange, source, tabs, data} = this.props;
+
+    // 如果没有配置 name ，说明不需要同步表单值
+    if (
+      !name ||
+      typeof onChange !== 'function' ||
+      // 如果关联某个变量数据，则不启用
+      source
+    ) {
+      return;
+    }
+
+    value = value ?? getVariable(data, name);
+
+    //  如果有值，切到对应的 tab
+    if (value && Array.isArray(tabs)) {
+      const key = this.resolveKeyByValue(value);
+      key !== undefined && this.handleSelect(key);
+    } else {
+      const tab = this.resolveTabByKey(this.activeKey);
+      if (tab && value !== ((tab as any).value ?? tab.title)) {
+        onChange((tab as any).value ?? tab.title, name);
+      }
+    }
   }
 
   componentDidUpdate(preProps: TabsProps, prevState: any) {
@@ -188,7 +245,12 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
           prevKey: this.state.activeKey
         });
       }
-    } else if (preProps.tabs !== props.tabs) {
+    } else if (
+      Array.isArray(props.tabs) &&
+      Array.isArray(preProps.tabs) &&
+      JSON.stringify(props.tabs.map(item => item.hash)) !==
+        JSON.stringify(preProps.tabs.map(item => item.hash))
+    ) {
       let activeKey: any = this.state.activeKey;
       const location = props.location;
       let tab: TabSchema | null = null;
@@ -216,6 +278,62 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
     }
 
     this.autoJumpToNeighbour(this.activeKey);
+
+    let {name, value, onChange, source, data} = this.props;
+
+    // 如果没有配置 name ，说明不需要同步表单值
+    if (
+      !name ||
+      typeof onChange !== 'function' ||
+      // 如果关联某个变量数据，则不启用
+      source
+    ) {
+      return;
+    }
+
+    let key: any;
+    value = value ?? getVariable(data, name);
+    const prevValue =
+      preProps.value ?? getVariable(preProps.data, preProps.name);
+    if (
+      value !== prevValue &&
+      (key = this.resolveKeyByValue(value)) !== undefined &&
+      key !== this.activeKey
+    ) {
+      this.handleSelect(key);
+    } else if (this.activeKey !== prevState.activeKey) {
+      const tab = this.resolveTabByKey(this.activeKey);
+      if (tab && value !== ((tab as any).value ?? tab.title)) {
+        onChange((tab as any).value ?? tab.title, name);
+      }
+    }
+  }
+
+  resolveTabByKey(key: any) {
+    const tabs = this.props.tabs;
+
+    if (!Array.isArray(tabs)) {
+      return;
+    }
+
+    return find(tabs, (tab: TabSchema, index) =>
+      tab.hash ? tab.hash === key : index === key
+    );
+  }
+
+  resolveKeyByValue(value: any) {
+    const tabs = this.props.tabs;
+
+    if (!Array.isArray(tabs)) {
+      return;
+    }
+
+    const tab: TabSchema = find(
+      tabs,
+      tab => ((tab as any).value ?? tab.title) === value
+    ) as TabSchema;
+
+    return tab && tab.hash ? tab.hash : tabs.indexOf(tab);
   }
 
   @autobind
@@ -305,19 +423,31 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
       classnames: cx,
       classPrefix: ns,
       contentClassName,
+      linksClassName,
       tabRender,
       className,
       render,
       data,
       mode: dMode,
       tabsMode,
-      mountOnEnter,
       unmountOnExit,
-      source
+      source,
+      formStore,
+      formMode,
+      formHorizontal,
+      subFormMode,
+      subFormHorizontal
     } = this.props;
 
     const mode = tabsMode || dMode;
     const arr = resolveVariable(source, data);
+    let mountOnEnter = this.props.mountOnEnter;
+
+    // 如果在form下面，其他tabs默认需要渲染出来
+    // 否则在其他 tab 下面的必填项检测不到
+    if (formStore) {
+      mountOnEnter = false;
+    }
 
     let tabs = this.props.tabs;
     if (!tabs) {
@@ -354,9 +484,12 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
               >
                 {render(
                   `item/${index}/${tabIndex}`,
-                  tab.tab || tab.body || '',
+                  (tab as any)?.type ? (tab as any) : tab.tab || tab.body,
                   {
-                    data: ctx
+                    data: ctx,
+                    formMode: tab.mode || subFormMode || formMode,
+                    formHorizontal:
+                      tab.horizontal || subFormHorizontal || formHorizontal
                   }
                 )}
               </Tab>
@@ -386,7 +519,15 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
               ? this.renderTab(tab, this.props, index)
               : tabRender
               ? tabRender(tab, this.props, index)
-              : render(`tab/${index}`, tab.tab || tab.body || '')}
+              : render(
+                  `tab/${index}`,
+                  (tab as any)?.type ? (tab as any) : tab.tab || tab.body,
+                  {
+                    formMode: tab.mode || subFormMode || formMode,
+                    formHorizontal:
+                      tab.horizontal || subFormHorizontal || formHorizontal
+                  }
+                )}
           </Tab>
         ) : null
       );
@@ -399,6 +540,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
         mode={mode}
         className={className}
         contentClassName={contentClassName}
+        linksClassName={linksClassName}
         onSelect={this.handleSelect}
         activeKey={this.state.activeKey}
         toolbar={this.renderToolbar()}
@@ -412,9 +554,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
     return this.renderTabs();
   }
 }
-
 @Renderer({
-  test: /(^|\/)tabs$/,
-  name: 'tabs'
+  type: 'tabs'
 })
 export class TabsRenderer extends Tabs {}

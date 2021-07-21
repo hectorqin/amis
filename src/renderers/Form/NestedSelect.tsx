@@ -22,7 +22,6 @@ import {findDOMNode} from 'react-dom';
 import {ResultBox, Spinner} from '../../components';
 import xor from 'lodash/xor';
 import union from 'lodash/union';
-import {isEqual} from 'lodash';
 
 /**
  * Nested Select
@@ -506,10 +505,15 @@ export default class NestedSelectControl extends React.Component<
     const {
       popOverContainer,
       translate: __,
-      noResultsText,
       classnames: cx,
-      options
+      options,
+      render
     } = this.props;
+    let noResultsText: any = this.props.noResultsText;
+
+    if (noResultsText) {
+      noResultsText = render('noResultText', __(noResultsText));
+    }
 
     let body = (
       <RootCloseWrapper
@@ -521,7 +525,7 @@ export default class NestedSelectControl extends React.Component<
             this.renderOptions()
           ) : (
             <div className={cx('NestedSelect-noResult')}>
-              {__(noResultsText)}
+              {noResultsText}
             </div>
           )}
         </div>

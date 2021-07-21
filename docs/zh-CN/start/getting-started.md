@@ -62,15 +62,15 @@ SDK 版本适合对前端或 React 不了解的开发者，它不依赖 npm 及 
             type: 'form',
             mode: 'horizontal',
             api: '/saveForm',
-            controls: [
+            body: [
               {
                 label: 'Name',
-                type: 'text',
+                type: 'input-text',
                 name: 'name'
               },
               {
                 label: 'Email',
-                type: 'email',
+                type: 'input-email',
                 name: 'email'
               }
             ]
@@ -81,6 +81,18 @@ SDK 版本适合对前端或 React 不了解的开发者，它不依赖 npm 及 
     </script>
   </body>
 </html>
+```
+
+### 更新属性
+
+可以通过 amisScoped 对象的 updateProps 方法来更新下发到 amis 的属性。
+
+```ts
+amisScoped.updateProps(
+  {
+    // 新的属性对象
+  } /*, () => {} 更新回调 */
+);
 ```
 
 ### 切换主题
@@ -100,9 +112,34 @@ amis.embed(
     theme: 'cxd'
   }
 );
+
+// 或者
+amisScoped.updateProps({
+  theme: 'cxd'
+});
 ```
 
 暗黑主题同理，改成引用 'dark.css' 同时主题设置成 `dark`。
+
+### 初始值
+
+可以通过 props 里的 data 属性来赋予 amis 顶层数据域的值，类似下面的例子。
+
+```js
+let amis = amisRequire('amis/embed');
+let amisJSON = {
+  type: 'page',
+  body: {
+    type: 'tpl',
+    tpl: "${myData}"
+  }
+};
+let amisScoped = amis.embed('#root', amisJSON, {
+  data: {
+    myData: 'amis'
+  }
+});
+```
 
 ### 控制 amis 的行为
 
@@ -164,10 +201,10 @@ let amisScoped = amis.embed(
   "body": {
     "type": "form",
     "name": "form1",
-    "controls": [
+    "body": [
       {
         "label": "Name",
-        "type": "text",
+        "type": "input-text",
         "name": "name1"
       }
     ]
@@ -179,9 +216,29 @@ let amisScoped = amis.embed(
 
 还可以通过 `amisScoped.getComponentByName('page1.form1').setValues({'name1': 'othername'})` 来修改表单中的值。
 
+### 更新属性
+
+可以通过 amisScoped 对象的 updateProps 方法来更新下发到 amis 的属性。
+
+```ts
+amisScoped.updateProps(
+  {
+    // 新的属性对象
+  } /*, () => {} 更新回调 */
+);
+```
+
+### 销毁
+
+如果是单页应用，在离开当前页面的时候通常需要销毁实例，可以通过 unmount 方法来完成。
+
+```ts
+amisScoped.unmount();
+```
+
 ### 切换主题
 
-jssdk 版本默认使用 `sdk.css` 即默认主题，如果你想用使用云舍，请改成引用 `cxd.scss`。同时 js 渲染地方第四个参数传入 `theme` 属性。如：
+jssdk 版本默认使用 `sdk.css` 即默认主题，如果你想用使用云舍，请改成引用 `cxd.css`。同时 js 渲染地方第四个参数传入 `theme` 属性。如：
 
 ```js
 amis.embed(
@@ -210,6 +267,14 @@ amis.embed(
 
 参考：https://github.com/baidu/amis/blob/master/examples/components/Example.tsx#L551-L575
 
+### 销毁
+
+如果是单页应用，在离开当前页面的时候通常需要销毁实例，可以通过 unmount 方法来完成。
+
+```ts
+amisScoped.unmount();
+```
+
 ## react
 
 初始项目请参考 <https://github.com/aisuda/amis-react-starter>。
@@ -232,6 +297,7 @@ html 中引入：
 
 ```html
 <link href="./node_modules/amis/lib/themes/default.css" />
+<link href="./node_modules/amis/lib/helper.css" />
 <!-- 或 <link href="./node_modules/amis/lib/themes/cxd.css" /> -->
 <!-- 或 <link href="./node_modules/amis/lib/themes/dark.css" /> -->
 ```
@@ -240,6 +306,7 @@ js 中引入：
 
 ```js
 import './node_modules/amis/lib/themes/default.css';
+import './node_modules/amis/lib/helper.css';
 // 或 import './node_modules/amis/lib/themes/cxd.css';
 // 或 import './node_modules/amis/lib/themes/dark.css';
 ```
@@ -290,12 +357,13 @@ import {toast} from 'amis/lib/components/Toast';
 
 class MyComponent extends React.Component<any, any> {
   render() {
-  let amisScoped;
+    let amisScoped;
+    let theme = 'default';
     return (
       <div>
         <p>通过 amis 渲染页面</p>
-        <ToastComponent key="toast" position={'top-right'} />
-        <AlertComponent key="alert" />
+        <ToastComponent theme={theme} key="toast" position={'top-right'} />
+        <AlertComponent theme={theme} key="alert" />
         {renderAmis(
           {
             // 这里是 amis 的 Json 配置。
@@ -356,7 +424,8 @@ class MyComponent extends React.Component<any, any> {
             copy: content => {
               copy(content);
               toast.success('内容已复制到粘贴板');
-            }
+            },
+            theme
 
             // 后面这些接口可以不用实现
 

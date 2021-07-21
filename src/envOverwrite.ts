@@ -3,8 +3,6 @@
  */
 
 import {SchemaNode, Schema} from './types';
-import {cloneDeep} from 'lodash';
-
 import {RendererProps, RendererConfig, addSchemaFilter} from './factory';
 
 const isMobile = (window as any).matchMedia?.('(max-width: 768px)').matches
@@ -12,7 +10,7 @@ const isMobile = (window as any).matchMedia?.('(max-width: 768px)').matches
   : false;
 
 addSchemaFilter(function (schema: Schema, renderer, props?: any) {
-  if (schema.mobile && isMobile) {
+  if (schema && schema.mobile && isMobile) {
     return {...schema, ...schema.mobile};
   }
 

@@ -400,15 +400,15 @@ export default class App extends React.Component<AppProps, object> {
 }
 
 @Renderer({
-  test: /(^|\/)app$/,
-  name: 'app',
+  type: 'app',
   storeType: AppStore.name
 })
 export class AppRenderer extends App {
   static contextType = ScopedContext;
+  constructor(props: AppProps, context: IScopedContext) {
+    super(props);
 
-  componentWillMount() {
-    const scoped = this.context as IScopedContext;
+    const scoped = context;
     scoped.registerComponent(this);
   }
 

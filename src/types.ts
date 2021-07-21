@@ -22,6 +22,8 @@ export interface fetcherResult {
     errors?: {
       [propName: string]: string;
     };
+    type?: string;
+    [propName: string]: any; // 为了兼容其他返回格式
   };
   status: number;
   headers: object;

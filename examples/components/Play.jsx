@@ -40,6 +40,20 @@ const scopes = {
         }
     }`,
 
+  'form2': `{
+      "type": "page",
+      "body": {
+          "title": "",
+          "type": "form",
+          "autoFocus": false,
+          "api": "/api/mock/saveForm?waitSeconds=1",
+          "mode": "horizontal",
+          "body": SCHEMA_PLACEHOLDER,
+          "submitText": null,
+          "actions": []
+      }
+  }`,
+
   'form-item': `{
         "type": "page",
         "body": {
@@ -53,7 +67,22 @@ const scopes = {
             "submitText": null,
             "actions": []
         }
-    }`
+    }`,
+
+  'form-item2': `{
+      "type": "page",
+      "body": {
+          "title": "",
+          "type": "form",
+          "mode": "horizontal",
+          "autoFocus": false,
+          "body": [
+              SCHEMA_PLACEHOLDER
+          ],
+          "submitText": null,
+          "actions": []
+      }
+  }`
 };
 
 export default class PlayGround extends React.Component {
@@ -99,6 +128,11 @@ export default class PlayGround extends React.Component {
 
         if (action && action.actionType === 'url') {
           action.blank === true ? window.open(to) : (window.location.href = to);
+          return;
+        }
+
+        if (action && to && action.target) {
+          window.open(to, action.target);
           return;
         }
 

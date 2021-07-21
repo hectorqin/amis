@@ -70,21 +70,6 @@ export default class CheckboxesControl extends React.Component<
     createBtnLabel: 'Select.createLabel'
   };
 
-  componentDidMount() {
-    const {defaultCheckAll, onToggleAll} = this.props;
-
-    defaultCheckAll && onToggleAll();
-  }
-
-  componentDidUpdate(prevProps: OptionsControlProps) {
-    let {options: currOptions, onToggleAll, defaultCheckAll} = this.props;
-    let {options: prevOptions} = prevProps;
-
-    if (defaultCheckAll && prevOptions != currOptions) {
-      onToggleAll();
-    }
-  }
-
   reload() {
     const reload = this.props.reloadOptions;
     reload && reload();
@@ -115,6 +100,10 @@ export default class CheckboxesControl extends React.Component<
   renderGroup(option: Option, index: number) {
     const {classnames: cx, labelField} = this.props;
 
+    if (!option.children?.length) {
+      return null;
+    }
+
     return (
       <div
         key={index}
@@ -126,11 +115,7 @@ export default class CheckboxesControl extends React.Component<
           {option[labelField || 'label']}
         </label>
 
-        {option.children && option.children.length
-          ? option.children.map((option, index) =>
-              this.renderItem(option, index)
-            )
-          : null}
+        {option.children.map((option, index) => this.renderItem(option, index))}
       </div>
     );
   }
@@ -236,7 +221,7 @@ export default class CheckboxesControl extends React.Component<
       );
     }
 
-    if (!inline && (columnsCount as number) > 1) {
+    if ((columnsCount as number) > 1) {
       let weight = 12 / (columnsCount as number);
       let cellClassName = `Grid-col--sm${
         weight === Math.round(weight) ? weight : ''

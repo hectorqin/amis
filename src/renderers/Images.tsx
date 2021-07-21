@@ -7,7 +7,7 @@ import {
   resolveVariableAndFilter
 } from '../utils/tpl-builtin';
 import Image, {ImageThumbProps, imagePlaceholder} from './Image';
-import {autobind} from '../utils/helper';
+import {autobind, getPropValue} from '../utils/helper';
 import {BaseSchema, SchemaClassName, SchemaUrlPath} from '../Schema';
 
 /**
@@ -54,13 +54,16 @@ export interface ImagesSchema extends BaseSchema {
   value?: any; // todo 补充 description
   source?: string;
 
+  // 静态配置，如果不相关联数据，而是直接固定列表展示，请配置。
+  options?: Array<any>;
+
   /**
-   * 图片地址，如果配置了 name，这个属性不用配置。
+   * 图片地址，默认读取数据中的 image 属性，如果不是请配置 ,如  ${imageUrl}
    */
   src?: string;
 
   /**
-   * 大图地址，不设置用 src
+   * 大图地址，不设置用 src 属性，如果不是请配置，如：${imageOriginUrl}
    */
   originalSrc?: string; // 原图
 
@@ -134,7 +137,7 @@ export class ImagesField extends React.Component<ImagesProps> {
               : (item && item.image) || item,
             originalSrc: originalSrc
               ? filter(originalSrc, item, '| raw')
-              : (item && item.src) || item,
+              : item?.src || filter(src, item, '| raw') || item?.image || item,
             title: item && (item.enlargeTitle || item.title),
             caption:
               item && (item.enlargeCaption || item.description || item.caption)
@@ -152,7 +155,6 @@ export class ImagesField extends React.Component<ImagesProps> {
       thumbRatio,
       data,
       name,
-      value,
       placeholder,
       classnames: cx,
       source,
@@ -160,17 +162,19 @@ export class ImagesField extends React.Component<ImagesProps> {
       enlargeAble,
       src,
       originalSrc,
-      listClassName
+      listClassName,
+      options
     } = this.props;
 
+    let value: any;
     let list: any;
 
     if (typeof source === 'string' && isPureVariable(source)) {
       list = resolveVariableAndFilter(source, data, '| raw') || undefined;
-    } else if (Array.isArray(value)) {
+    } else if (Array.isArray((value = getPropValue(this.props)))) {
       list = value;
-    } else if (name && data[name]) {
-      list = data[name];
+    } else if (Array.isArray(options)) {
+      list = options;
     }
 
     if (typeof list === 'string') {
@@ -226,7 +230,6 @@ export class ImagesField extends React.Component<ImagesProps> {
 }
 
 @Renderer({
-  test: /(^|\/)images$/,
-  name: 'images'
+  type: 'images'
 })
 export class ImagesFieldRenderer extends ImagesField {}

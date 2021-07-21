@@ -20,9 +20,6 @@ $danger-bg: #fff5f5;
 $text-color: #666;
 
 $Toast-icon-fillHeight: false;
-$Button-onDisabled-bg: #f5f5f5;
-$Button-onDisabled-borderColor: #ebebeb;
-$Button-onDisabled-color: #aaa;
 $Number-handler-mode: 'horizontal';
 // css 变量似乎没法用 !important，所以这里用 sass 变量
 $Wizard-steps-liAfterBorder: none !important;
@@ -118,7 +115,6 @@ $Wizard-steps-liAfterBorder: none !important;
   --Form-selectValue-color: var(--primary);
 
   --InputGroup-select-borderWidth: #{px2rem(1px)};
-  --InputGroup-select-bg: #f6f7fb;
   --InputGroup-select-onFocused-bg: #eaf6fe;
   --InputGroup-select-color: #333;
   --InputGroup-select-onFocused-color: var(--primary);
@@ -196,12 +192,7 @@ $Wizard-steps-liAfterBorder: none !important;
   --Button-borderRadius: 0;
   --Button--lg-borderRadius: 0;
   --Button--sm-borderRadius: 0;
-  --Button-onDisabled-opacity: 1;
 
-  --Button-onDisabled-bg: #{$Button-onDisabled-bg};
-  --Button-onDisabledActive-bg: #f5f5f5;
-  --Button-onDisabled-borderColor: #{$Button-onDisabled-borderColor};
-  --Button-onDisabled-color: #{$Button-onDisabled-color};
   --Button-paddingX: #{px2rem(10px)};
 
   --Button--lg-height: #{px2rem(40px)};
@@ -253,7 +244,6 @@ $Wizard-steps-liAfterBorder: none !important;
   --Table-thead-bg: #f5f5f5;
   --Table-thead-borderColor: #fff;
   --Table-thead-iconColor: #999;
-  $Table-strip-bg: transparent;
   --Table-strip-bg: transparent;
   --Table-onHover-bg: #f5fbff;
   --Table-onHover-bg-rgb: 245, 251, 255;
@@ -453,9 +443,9 @@ $Wizard-steps-liAfterBorder: none !important;
   --Card-onChecked-borderColor: var(--primary);
   --Card-onChecked-color: var(--primary);
 
-  --Card-onModified-bg: #108cee;
+  --Card-onModified-bg: #e8f0fe;
   --Card-onModified-borderColor: var(--primary);
-  --Card-onModified-color: var(--primary);
+  --Card-onModified-color: #4285f4;
 
   --Card-actions-onHover-bg: white;
   --Card-actions-onHover-color: var(--primary);

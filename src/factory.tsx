@@ -4,7 +4,7 @@ import {RendererStore, IRendererStore, IIRendererStore} from './store/index';
 import {getEnv, destroy} from 'mobx-state-tree';
 import {wrapFetcher} from './utils/api';
 import {normalizeLink} from './utils/normalizeLink';
-import {findIndex, promisify} from './utils/helper';
+import {findIndex, promisify, string2regExp} from './utils/helper';
 import {Api, fetcherResult, Payload, SchemaNode, Schema, Action} from './types';
 import {observer} from 'mobx-react';
 import Scoped from './Scoped';
@@ -31,7 +31,8 @@ export interface TestFunc {
 }
 
 export interface RendererBasicConfig {
-  test: RegExp | TestFunc;
+  test?: RegExp | TestFunc;
+  type?: string;
   name?: string;
   storeType?: string;
   shouldSyncSuperStore?: (
@@ -39,7 +40,7 @@ export interface RendererBasicConfig {
     props: any,
     prevProps: any
   ) => boolean | undefined;
-  storeExtendsData?: boolean; // 是否需要继承上层数据。
+  storeExtendsData?: boolean | ((props: any) => boolean); // 是否需要继承上层数据。
   weight?: number; // 权重，值越低越优先命中。
   isolateScope?: boolean;
   isFormItem?: boolean;
@@ -50,6 +51,7 @@ export interface RendererProps extends ThemeProps, LocaleProps {
   render: (region: string, node: SchemaNode, props?: any) => JSX.Element;
   env: RendererEnv;
   $path: string; // 当前组件所在的层级信息
+  $schema: any; // 原始 schema 配置
   store?: IIRendererStore;
   syncSuperStore?: boolean;
   data: {
@@ -149,15 +151,21 @@ export function Renderer(config: RendererBasicConfig) {
 }
 
 export function registerRenderer(config: RendererConfig): RendererConfig {
-  if (!config.test) {
-    throw new TypeError('config.test is required');
+  if (!config.test && !config.type) {
+    throw new TypeError('please set config.test or config.type');
   } else if (!config.component) {
     throw new TypeError('config.component is required');
   }
 
+  if (typeof config.type === 'string' && config.type) {
+    config.type = config.type.toLowerCase();
+    config.test =
+      config.test || new RegExp(`(^|\/)${string2regExp(config.type)}$`, 'i');
+  }
+
   config.weight = config.weight || 0;
   config.Renderer = config.component;
-  config.name = config.name || `anonymous-${anonymousIndex++}`;
+  config.name = config.name || config.type || `anonymous-${anonymousIndex++}`;
 
   if (~rendererNames.indexOf(config.name)) {
     throw new Error(
@@ -420,7 +428,11 @@ export function resolveRenderer(
   path: string,
   schema?: Schema
 ): null | RendererConfig {
-  if (cache[path]) {
+  const type = typeof schema?.type == 'string' ? schema.type.toLowerCase() : '';
+
+  if (type && cache[type]) {
+    return cache[type];
+  } else if (cache[path]) {
     return cache[path];
   } else if (path && path.length > 1024) {
     throw new Error('Path太长是不是死循环了？');
@@ -431,8 +443,16 @@ export function resolveRenderer(
   renderers.some(item => {
     let matched = false;
 
-    // 不应该搞得这么复杂的，让每个渲染器唯一 id，自己不晕别人用起来也不晕。
-    if (typeof item.test === 'function') {
+    // 直接匹配类型，后续注册渲染都应该用这个方式而不是之前的判断路径。
+    if (item.type && type) {
+      matched = item.type === type;
+
+      // 如果是type来命中的，那么cache的key直接用 type 即可。
+      if (matched) {
+        cache[type] = item;
+      }
+    } else if (typeof item.test === 'function') {
+      // 不应该搞得这么复杂的，让每个渲染器唯一 id，自己不晕别人用起来也不晕。
       matched = item.test(path, schema, resolveRenderer);
     } else if (item.test instanceof RegExp) {
       matched = item.test.test(path);
@@ -449,7 +469,8 @@ export function resolveRenderer(
   // 因为自定义 test 函数的有可能依赖 schema 的结果
   if (
     renderer !== null &&
-    ((renderer as RendererConfig).test instanceof RegExp ||
+    ((renderer as RendererConfig).type ||
+      (renderer as RendererConfig).test instanceof RegExp ||
       (typeof (renderer as RendererConfig).test === 'function' &&
         ((renderer as RendererConfig).test as Function).length < 2))
   ) {

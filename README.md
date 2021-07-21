@@ -41,11 +41,7 @@
 # 安装项目 npm 依赖，在 node 12 下会有报错但不影响正常使用。
 npm i
 
-# 开始编译，把代码产出到刚开启的服务的 webroot 目录。
-# 这个程序不会自动结束，进入一个 watch 模式，文件变动会重新编译。
-npm run dev
-
-# 开启 fis3 服务，请通过 http://127.0.0.1:8888/examples/pages/simple 访问。
+# 启动项目，等编译结束后通过 http://127.0.0.1:8888/examples/pages/simple 访问。
 npm start
 ```
 
@@ -83,3 +79,7 @@ npm run update-snapshot
 - [RickCole21](https://github.com/RickCole21)
 - [catchonme](https://github.com/catchonme)
 - [nwind](https://github.com/nwind)
+
+## 低代码平台
+
+amis 只能实现前端低代码，如果需要完整的低代码平台推荐使用[爱速搭](https://suda.baidu.com/)。

@@ -10,7 +10,8 @@ import {
   autobind,
   createObject,
   isObject,
-  isArrayChildrenModified
+  isArrayChildrenModified,
+  getPropValue
 } from '../utils/helper';
 import {Icon} from '../components/icons';
 import {BaseSchema, SchemaCollection, SchemaName, SchemaTpl} from '../Schema';
@@ -107,16 +108,8 @@ const defaultSchema = {
         <div style="background-image: url('<%= data.image %>'); background-size: contain; background-repeat: no-repeat; background-position: center center;" class="image <%= data.imageClassName %>"></div>
         <% if (data.hasOwnProperty('title')) { %>
             <div class="title <%= data.titleClassName %>"><%= data.title %></div>
-        <% } if (data.hasOwnProperty('description')) { %>
-            <div class="description <%= data.descriptionClassName %>"><%= data.description %></div>
         <% } %>
-    <% } else if (data.hasOwnProperty('html')) { %>
-        <%= data.html %>"
-    <% } else if (data.hasOwnProperty('image')) { %>
-        <div style="background-image: url('<%= data.image %>')" class="image <%= data.imageClassName %>"></div>
-        <% if (data.title) { %>
-            <div class="title <%= data.titleClassName %>"><%= data.title %></div>
-        <% } if (data.description) { %>
+        <% if (data.hasOwnProperty('description')) { %>
             <div class="description <%= data.descriptionClassName %>"><%= data.description %></div>
         <% } %>
     <% } else if (data.hasOwnProperty('html')) { %>
@@ -155,30 +148,25 @@ export class Carousel extends React.Component<CarouselProps, CarouselState> {
 
   state = {
     current: 0,
-    options:
-      this.props.value ||
-      this.props.options ||
-      resolveVariable(this.props.name, this.props.data) ||
-      [],
+    options: this.props.options || getPropValue(this.props) || [],
     nextAnimation: ''
   };
 
-  componentWillReceiveProps(nextProps: CarouselProps) {
-    const currentOptions = this.state.options;
-    const nextOptions =
-      nextProps.value ||
-      nextProps.options ||
-      resolveVariable(nextProps.name, nextProps.data) ||
-      [];
-    if (isArrayChildrenModified(currentOptions, nextOptions)) {
+  componentDidMount() {
+    this.prepareAutoSlide();
+  }
+
+  componentDidUpdate(prevProps: CarouselProps) {
+    const props = this.props;
+
+    const nextOptions = props.options || getPropValue(props) || [];
+    const prevOptions = prevProps.options || getPropValue(prevProps) || [];
+
+    if (isArrayChildrenModified(prevOptions, nextOptions)) {
       this.setState({
         options: nextOptions
       });
     }
-  }
-
-  componentDidMount() {
-    this.prepareAutoSlide();
   }
 
   componentWillUnmount() {
@@ -415,7 +403,6 @@ export class Carousel extends React.Component<CarouselProps, CarouselState> {
 }
 
 @Renderer({
-  test: /(^|\/)carousel/,
-  name: 'carousel'
+  type: 'carousel'
 })
 export class CarouselRenderer extends Carousel {}

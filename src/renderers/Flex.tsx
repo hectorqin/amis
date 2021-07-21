@@ -5,7 +5,7 @@
 import React from 'react';
 import {Renderer, RendererProps} from '../factory';
 import {Schema} from '../types';
-import {BaseSchema, SchemaCollection, SchemaObject} from '../Schema';
+import {BaseSchema, SchemaCollection} from '../Schema';
 
 /**
  * Flex 布局
@@ -63,7 +63,7 @@ export interface FlexSchema extends BaseSchema {
   /**
    * 每个 flex 的设置
    */
-  items: Array<SchemaObject>;
+  items: SchemaCollection;
 
   /**
    * 自定义样式
@@ -112,7 +112,14 @@ export default class Flex extends React.Component<FlexProps, object> {
 
     return (
       <div style={flexStyle} className={className}>
-        {items.map((item, key) => render(`flexItem/${key}`, item))}
+        {(Array.isArray(items)
+          ? items
+          : items
+          ? [items]
+          : []
+        ).map((item, key) =>
+          render(`flexItem/${key}`, item, {key: `flexItem/${key}`})
+        )}
       </div>
     );
   }
@@ -170,13 +177,11 @@ export class FlexItem extends React.Component<FlexItemProps, object> {
 }
 
 @Renderer({
-  test: /(^|\/)flex$/,
-  name: 'flex'
+  type: 'flex'
 })
 export class FlexRenderer extends Flex {}
 
 @Renderer({
-  test: /(^|\/)flex-item$/,
-  name: 'flex-item'
+  type: 'flex-item'
 })
 export class FlexItemRenderer extends FlexItem {}

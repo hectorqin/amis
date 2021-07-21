@@ -15,7 +15,7 @@ icon:
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -167,7 +167,7 @@ type Value = ValueGroup;
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -200,7 +200,7 @@ type Value = ValueGroup;
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -236,7 +236,7 @@ type Value = ValueGroup;
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -270,7 +270,7 @@ type Value = ValueGroup;
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -303,7 +303,7 @@ type Value = ValueGroup;
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -336,7 +336,7 @@ type Value = ValueGroup;
 {
     "type": "form",
     "debug": true,
-    "controls": [
+    "body": [
         {
           "type": "condition-builder",
           "label": "条件组件",
@@ -364,7 +364,7 @@ type Value = ValueGroup;
 ```schema: scope="body"
 {
     "type": "form",
-    "controls": [
+    "body": [
       {
         "type": "condition-builder",
         "label": "条件组件",
@@ -378,7 +378,8 @@ type Value = ValueGroup;
 
 ## 属性表
 
-| 属性名         | 类型     | 默认值 | 说明           |
-| -------------- | -------- | ------ | -------------- |
-| className      | `string` |        | 外层 dom 类名  |
-| fieldClassName | `string` |        | 输入字段的类名 |
+| 属性名         | 类型     | 默认值 | 说明               |
+| -------------- | -------- | ------ | ------------------ |
+| className      | `string` |        | 外层 dom 类名      |
+| fieldClassName | `string` |        | 输入字段的类名     |
+| source         | `string` |        | 通过远程拉取配置项 |

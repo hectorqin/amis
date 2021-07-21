@@ -4,7 +4,6 @@ import {
   FormItem,
   FormControlProps,
   FormBaseControl,
-  FormControlSchema,
   FormControlSchemaAlias
 } from './Item';
 import {Schema, Action, Api} from '../../types';
@@ -30,17 +29,24 @@ import {Alert2} from '../../components';
 import memoize from 'lodash/memoize';
 import {Icon} from '../../components/icons';
 import {isAlive} from 'mobx-state-tree';
-import {SchemaApi, SchemaClassName, SchemaIcon, SchemaTpl} from '../../Schema';
+import {
+  SchemaApi,
+  SchemaClassName,
+  SchemaCollection,
+  SchemaIcon,
+  SchemaObject,
+  SchemaTpl
+} from '../../Schema';
 
 export type ComboCondition = {
   test: string;
-  controls: Array<FormControlSchema>;
+  items: Array<ComboSubControl>;
   label: string;
   scaffold?: any;
   mode?: string;
 };
 
-export type ComboSubControl = FormControlSchema & {
+export type ComboSubControl = SchemaObject & {
   /**
    * 是否唯一, 只有在 combo 里面才有用
    */
@@ -118,7 +124,7 @@ export interface ComboControlSchema extends FormBaseControl {
   /**
    * 数组输入框的子项
    */
-  controls?: Array<ComboSubControl>;
+  items?: Array<ComboSubControl>;
 
   /**
    * 是否可拖拽排序
@@ -215,6 +221,13 @@ export interface ComboControlSchema extends FormBaseControl {
    * 严格模式，为了性能默认不开的。
    */
   strictMode?: boolean;
+
+  /**
+   * 配置同步字段。只有 `strictMode` 为 `false` 时有效。
+   * 如果 Combo 层级比较深，底层的获取外层的数据可能不同步。
+   * 但是给 combo 配置这个属性就能同步下来。输入格式：`["os"]`
+   */
+  syncFields?: string[];
 
   /**
    * 允许为空，如果子表单项里面配置验证器，且又是单条模式。可以允许用户选择清空（不填）。
@@ -319,7 +332,7 @@ export default class ComboControl extends React.Component<ComboProps> {
     'lazyLoad',
     'changeImmediately',
     'strictMode',
-    'controls',
+    'items',
     'conditions',
     'messages'
   ];
@@ -353,9 +366,7 @@ export default class ComboControl extends React.Component<ComboProps> {
     this.defaultValue = {
       ...props.scaffold
     };
-  }
 
-  componentWillMount() {
     const {
       store,
       value,
@@ -364,25 +375,25 @@ export default class ComboControl extends React.Component<ComboProps> {
       maxLength,
       formItem,
       addHook
-    } = this.props;
+    } = props;
 
     store.config({
       multiple,
       minLength,
       maxLength,
-      length: this.getValueAsArray().length
+      length: this.getValueAsArray(props).length
     });
 
     formItem && isAlive(formItem) && formItem.setSubStore(store);
     addHook && this.toDispose.push(addHook(this.flush, 'flush'));
   }
 
-  componentWillReceiveProps(nextProps: ComboProps) {
+  componentDidUpdate(prevProps: ComboProps) {
     const props = this.props;
 
-    if (anyChanged(['minLength', 'maxLength', 'value'], props, nextProps)) {
-      const {store, minLength, maxLength, multiple} = nextProps;
-      const values = this.getValueAsArray(nextProps);
+    if (anyChanged(['minLength', 'maxLength', 'value'], prevProps, props)) {
+      const {store, minLength, maxLength, multiple} = props;
+      const values = this.getValueAsArray(props);
 
       store.config({
         multiple,
@@ -398,8 +409,8 @@ export default class ComboControl extends React.Component<ComboProps> {
       // combo 进来了新的值，且这次 form 初始化时带来的新值变化，但是之前的值已经 onInit 过了
       // 所以，之前 onInit 设置进去的初始值是过时了的。这个时候修复一下。
       if (
-        nextProps.value !== props.value &&
-        !props.formInited &&
+        props.value !== prevProps.value &&
+        !prevProps.formInited &&
         this.subFormDefaultValues.length
       ) {
         this.subFormDefaultValues = this.subFormDefaultValues.map(
@@ -931,7 +942,7 @@ export default class ComboControl extends React.Component<ComboProps> {
       translate: __
     } = this.props;
 
-    let controls = this.props.controls;
+    let items = this.props.items;
     let value = this.props.value;
 
     if (flat && typeof value === 'string') {
@@ -1029,18 +1040,18 @@ export default class ComboControl extends React.Component<ComboProps> {
 
           if (Array.isArray(conditions) && conditions.length) {
             condition = this.pickCondition(data);
-            controls = condition ? condition.controls : undefined;
+            items = condition ? condition.items : undefined;
           }
 
           let finnalControls =
-            flat && controls
+            flat && items
               ? [
                   {
-                    ...(controls && controls[0]),
+                    ...(items && items[0]),
                     name: 'flat'
                   }
                 ]
-              : controls;
+              : items;
 
           const hasUnique =
             Array.isArray(finnalControls) &&
@@ -1082,7 +1093,7 @@ export default class ComboControl extends React.Component<ComboProps> {
                     `multiple/${index}`,
                     {
                       type: 'form',
-                      controls: finnalControls,
+                      body: finnalControls,
                       wrapperComponent: 'div',
                       wrapWithPanel: false,
                       mode: subFormMode,
@@ -1152,7 +1163,7 @@ export default class ComboControl extends React.Component<ComboProps> {
       translate: __
     } = this.props;
 
-    let controls = this.props.controls;
+    let items = this.props.items;
     let value = this.props.value;
 
     if (flat && typeof value === 'string') {
@@ -1210,18 +1221,18 @@ export default class ComboControl extends React.Component<ComboProps> {
 
               if (Array.isArray(conditions) && conditions.length) {
                 condition = this.pickCondition(data);
-                controls = condition ? condition.controls : undefined;
+                items = condition ? condition.items : undefined;
               }
 
               let finnalControls =
-                flat && controls
+                flat && items
                   ? [
                       {
-                        ...(controls && controls[0]),
+                        ...(items && items[0]),
                         name: 'flat'
                       }
                     ]
-                  : controls;
+                  : items;
 
               return (
                 <div
@@ -1265,7 +1276,7 @@ export default class ComboControl extends React.Component<ComboProps> {
                         `multiple/${index}`,
                         {
                           type: 'form',
-                          controls: finnalControls,
+                          body: finnalControls,
                           wrapperComponent: 'div',
                           wrapWithPanel: false,
                           mode: multiLine ? subFormMode : 'row',
@@ -1365,13 +1376,13 @@ export default class ComboControl extends React.Component<ComboProps> {
       translate: __
     } = this.props;
 
-    let controls = this.props.controls;
+    let items = this.props.items;
     const data = isObject(value) ? this.formatValue(value) : this.defaultValue;
     let condition: ComboCondition | null = null;
 
     if (Array.isArray(conditions) && conditions.length) {
       condition = this.pickCondition(data);
-      controls = condition ? condition.controls : undefined;
+      items = condition ? condition.items : undefined;
     }
 
     return (
@@ -1400,12 +1411,12 @@ export default class ComboControl extends React.Component<ComboProps> {
           ) : null}
 
           <div className={cx(`Combo-itemInner`)}>
-            {controls ? (
+            {items ? (
               render(
                 'single',
                 {
                   type: 'form',
-                  controls,
+                  body: items,
                   wrapperComponent: 'div',
                   wrapWithPanel: false,
                   mode: multiLine ? 'normal' : 'row',
@@ -1446,7 +1457,7 @@ export default class ComboControl extends React.Component<ComboProps> {
       disabled
     } = this.props;
 
-    return formInited ? (
+    return formInited || typeof formInited === 'undefined' ? (
       <div className={cx(`ComboControl`, className)}>
         {multiple ? this.renderMultipe() : this.renderSingle()}
       </div>

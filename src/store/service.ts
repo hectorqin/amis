@@ -419,7 +419,13 @@ export const ServiceStore = iRendererStore
           );
         } else {
           if (json.data) {
-            self.schema = json.data;
+            self.schema = Array.isArray(json.data)
+              ? json.data
+              : {
+                  type: 'wrapper',
+                  wrap: false,
+                  ...json.data
+                };
             self.schemaKey = '' + Date.now();
             isObject(json.data.data) &&
               self.updateData(
@@ -428,6 +434,7 @@ export const ServiceStore = iRendererStore
                 !!(api as ApiObject).replaceData
               );
           }
+
           updateMessage(json.msg ?? (options && options.successMessage));
 
           // 配置了获取成功提示后提示，默认是空不会提示。

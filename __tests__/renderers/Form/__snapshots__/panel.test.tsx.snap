@@ -33,13 +33,14 @@ exports[`Renderer:panel 1`] = `
           data-role="form-item"
         >
           <div
-            class="a-FormHbox a-Form-control"
+            class="a-Hbox a-Hbox--xs"
           >
             <div
-              class="a-Hbox"
+              class="a-Hbox-col"
             >
               <div
-                class="a-Hbox-col a-Form--normal"
+                class="a-Form-item a-Form-item--normal"
+                data-role="form-item"
               >
                 <div
                   class="a-Panel a-Panel--default"
@@ -131,8 +132,13 @@ exports[`Renderer:panel 1`] = `
                   </div>
                 </div>
               </div>
+            </div>
+            <div
+              class="a-Hbox-col"
+            >
               <div
-                class="a-Hbox-col a-Form--normal"
+                class="a-Form-item a-Form-item--normal"
+                data-role="form-item"
               >
                 <div
                   class="a-Panel a-Panel--default"
@@ -157,48 +163,42 @@ exports[`Renderer:panel 1`] = `
                     class="a-Panel-body"
                   >
                     <div
-                      class="a-Form--normal"
+                      class="a-Form-item a-Form-item--normal"
+                      data-role="form-item"
                     >
                       <div
-                        class="a-Form-item a-Form-item--normal"
-                        data-role="form-item"
+                        class="a-Form-control a-TextControl"
                       >
                         <div
-                          class="a-Form-control a-TextControl"
+                          class="a-TextControl-input"
                         >
-                          <div
-                            class="a-TextControl-input"
-                          >
-                            <input
-                              autocomplete="off"
-                              name="text"
-                              placeholder="Text 1"
-                              size="10"
-                              type="text"
-                              value=""
-                            />
-                          </div>
+                          <input
+                            autocomplete="off"
+                            placeholder="Text 1"
+                            size="10"
+                            type="text"
+                            value=""
+                          />
                         </div>
                       </div>
+                    </div>
+                    <div
+                      class="a-Form-item a-Form-item--normal"
+                      data-role="form-item"
+                    >
                       <div
-                        class="a-Form-item a-Form-item--normal"
-                        data-role="form-item"
+                        class="a-Form-control a-TextControl"
                       >
                         <div
-                          class="a-Form-control a-TextControl"
+                          class="a-TextControl-input"
                         >
-                          <div
-                            class="a-TextControl-input"
-                          >
-                            <input
-                              autocomplete="off"
-                              name="text2"
-                              placeholder="Text 2"
-                              size="10"
-                              type="text"
-                              value=""
-                            />
-                          </div>
+                          <input
+                            autocomplete="off"
+                            placeholder="Text 2"
+                            size="10"
+                            type="text"
+                            value=""
+                          />
                         </div>
                       </div>
                     </div>

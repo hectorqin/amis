@@ -91,6 +91,13 @@ const availableShortcuts: {[propName: string]: any} = {
     date: (now: moment.Moment) => {
       return now.endOf('month');
     }
+  },
+
+  endoflastmonth: {
+    label: 'Date.endOfLastMonth',
+    date: (now: moment.Moment) => {
+      return now.add(-1, 'month').endOf('month');
+    }
   }
 };
 
@@ -229,6 +236,7 @@ export type ShortCuts =
 export interface DateProps extends LocaleProps, ThemeProps {
   viewMode: 'years' | 'months' | 'days' | 'time' | 'quarters';
   className?: string;
+  popoverClassName?: string;
   placeholder?: string;
   inputFormat?: string;
   timeFormat?: string;
@@ -320,10 +328,12 @@ export class DatePicker extends React.Component<DateProps, DatePickerState> {
 
   dom: HTMLDivElement;
 
-  componentWillReceiveProps(nextProps: DateProps) {
-    if (this.props.value !== nextProps.value) {
+  componentDidUpdate(prevProps: DateProps) {
+    const props = this.props;
+
+    if (prevProps.value !== props.value) {
       this.setState({
-        value: normalizeValue(nextProps.value, nextProps.format)
+        value: normalizeValue(props.value, props.format)
       });
     }
   }
@@ -516,6 +526,7 @@ export class DatePicker extends React.Component<DateProps, DatePickerState> {
       classPrefix: ns,
       classnames: cx,
       className,
+      popoverClassName,
       value,
       placeholder,
       disabled,
@@ -614,7 +625,7 @@ export class DatePicker extends React.Component<DateProps, DatePickerState> {
           >
             <PopOver
               classPrefix={ns}
-              className={cx(`DatePicker-popover`)}
+              className={cx(`DatePicker-popover`, popoverClassName)}
               onHide={this.close}
               overlay
               onClick={this.handlePopOverClick}

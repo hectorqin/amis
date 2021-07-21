@@ -16,7 +16,7 @@ order: 9
 {
     "type": "form",
     "api": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
-    "controls": [
+    "body": [
         {
         "name": "checkboxes",
         "type": "checkboxes",
@@ -52,7 +52,7 @@ order: 9
 {
     "type": "form",
     "api": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
-    "controls": [
+    "body": [
         {
         "name": "checkboxes",
         "type": "checkboxes",
@@ -89,7 +89,7 @@ order: 9
 {
     "type": "form",
     "api": "https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm",
-    "controls": [
+    "body": [
         {
             "name": "checkboxes1",
             "type": "checkboxes",
@@ -142,6 +142,61 @@ order: 9
             ]
         }
     ]
+}
+```
+
+## 分组显示
+
+`"inline": false` 下，选项中配置 `children` 字段可以实现分组展示效果。
+
+```schema: scope="body"
+{
+  "type": "form",
+  "mode": "horizontal",
+  "body": [
+    {
+      "type": "checkboxes",
+      "name": "checkboxes",
+      "label": "城市选择",
+      "inline": false,
+      "options": [
+        {
+          "label": "A类型",
+          "children": [
+            {
+              "value": "选项 A-1",
+              "label": "a-1"
+            },
+            {
+              "value": "选项 A-2",
+              "label": "a-2"
+            }
+          ]
+        },
+        {
+          "label": "B类型",
+          "children": [
+            {
+              "value": "选项 B-1",
+              "label": "b-1"
+            },
+            {
+              "value": "选项 B-2",
+              "label": "b-2"
+            },
+            {
+              "value": "选项 B-3",
+              "label": "b-3"
+            },
+            {
+              "value": "选项 B-4",
+              "label": "b-4"
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
 ```
 

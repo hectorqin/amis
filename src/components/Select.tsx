@@ -247,9 +247,11 @@ const DownshiftChangeTypes = Downshift.stateChangeTypes;
 
 interface SelectProps extends OptionProps, ThemeProps, LocaleProps {
   className?: string;
+  popoverClassName?: string;
   creatable: boolean;
   createBtnLabel: string;
   multiple: boolean;
+  valuesNoWrap?: boolean;
   valueField: string;
   labelField: string;
   renderMenu?: (
@@ -360,28 +362,7 @@ export class Select extends React.Component<SelectProps, SelectState> {
   }
 
   componentDidMount() {
-    const {
-      loadOptions,
-      options,
-      multiple,
-      defaultCheckAll,
-      onChange,
-      simpleValue
-    } = this.props;
-    let {selection} = this.state;
-
-    if (multiple && defaultCheckAll && options.length) {
-      selection = union(options, selection);
-      this.setState({
-        selection: selection
-      });
-
-      // 因为等 State 设置完后再 onChange，会让 form 再 didMount 中的
-      // onInit 出去的数据没有包含这部分，所以从 state 回调中拿出来了
-      // 存在风险
-      onChange(simpleValue ? selection.map(item => item.value) : selection);
-    }
-
+    const {loadOptions} = this.props;
     loadOptions && loadOptions('');
   }
 
@@ -390,35 +371,10 @@ export class Select extends React.Component<SelectProps, SelectState> {
     let fn: () => void = noop;
 
     if (
-      props.value !== prevProps.value ||
+      JSON.stringify(props.value) !== JSON.stringify(prevProps.value) ||
       JSON.stringify(props.options) !== JSON.stringify(prevProps.options)
     ) {
-      let selection: Array<Option>;
-      if (
-        (!prevProps.options || !prevProps.options.length) &&
-        props.options.length
-      ) {
-        const {selection: stateSelection} = this.state;
-        const {
-          multiple,
-          defaultCheckAll,
-          options,
-          onChange,
-          simpleValue
-        } = props;
-        if (multiple && defaultCheckAll && options.length) {
-          selection = union(options, stateSelection);
-          fn = () =>
-            onChange(
-              simpleValue ? selection.map(item => item.value) : selection
-            );
-        } else {
-          selection = value2array(props.value, props);
-        }
-      } else {
-        selection = value2array(props.value, props);
-      }
-
+      const selection:  Array<Option> = value2array(props.value, props);
       this.setState(
         {
           selection: selection
@@ -580,7 +536,7 @@ export class Select extends React.Component<SelectProps, SelectState> {
         };
         break;
       case DownshiftChangeTypes.controlledPropUpdatedSelectedItem:
-
+        break;
       case DownshiftChangeTypes.changeInput:
         update.highlightedIndex = 0;
         break;
@@ -650,6 +606,7 @@ export class Select extends React.Component<SelectProps, SelectState> {
   renderValue({inputValue, isOpen}: ControllerStateAndHelpers<any>) {
     const {
       multiple,
+      valuesNoWrap,
       placeholder,
       classPrefix: ns,
       labelField,
@@ -668,8 +625,20 @@ export class Select extends React.Component<SelectProps, SelectState> {
       );
     }
 
-    return selection.map((item, index) =>
-      multiple ? (
+    return selection.map((item, index) => {
+      if (!multiple) {
+        return (
+          <div className={`${ns}Select-value`} key={index}>
+            {`${item[labelField || 'label']}`}
+          </div>
+        );
+      }
+
+      return valuesNoWrap ? (
+        `${item[labelField || 'label']}${
+          index === selection.length - 1 ? '' : ' + '
+        }`
+      ) : (
         <div className={`${ns}Select-value`} key={index}>
           <span
             className={`${ns}Select-valueIcon ${
@@ -683,12 +652,8 @@ export class Select extends React.Component<SelectProps, SelectState> {
             {`${item[labelField || 'label']}`}
           </span>
         </div>
-      ) : (
-        <div className={`${ns}Select-value`} key={index}>
-          {`${item[labelField || 'label']}`}
-        </div>
-      )
-    );
+      );
+    });
   }
 
   renderOuter({
@@ -709,7 +674,9 @@ export class Select extends React.Component<SelectProps, SelectState> {
       loadOptions,
       creatable,
       multiple,
+      valuesNoWrap,
       classnames: cx,
+      popoverClassName,
       checkAll,
       checkAllLabel,
       searchable,
@@ -790,15 +757,36 @@ export class Select extends React.Component<SelectProps, SelectState> {
           ) : null}
 
           {renderMenu ? (
-            renderMenu(item, {
-              multiple,
-              checkAll,
-              checked,
-              onChange: () => this.handleChange(item),
-              inputValue: inputValue || '',
-              searchable,
-              index
-            })
+            checkAll || multiple ? (
+              <Checkbox
+                checked={checked}
+                trueValue={item.value}
+                onChange={() => {
+                  this.handleChange(item);
+                }}
+                disabled={item.disabled}
+              >
+                {renderMenu(item, {
+                  multiple,
+                  checkAll,
+                  checked,
+                  onChange: () => this.handleChange(item),
+                  inputValue: inputValue || '',
+                  searchable,
+                  index
+                })}
+              </Checkbox>
+            ) : (
+              renderMenu(item, {
+                multiple,
+                checkAll,
+                checked,
+                onChange: () => this.handleChange(item),
+                inputValue: inputValue || '',
+                searchable,
+                index
+              })
+            )
           ) : checkAll || multiple ? (
             <Checkbox
               checked={checked}
@@ -807,6 +795,7 @@ export class Select extends React.Component<SelectProps, SelectState> {
                 this.handleChange(item);
               }}
               disabled={item.disabled}
+              size="sm"
             >
               {item.disabled
                 ? item[labelField]
@@ -835,7 +824,12 @@ export class Select extends React.Component<SelectProps, SelectState> {
     };
 
     const menu = (
-      <div ref={this.menu} className={cx('Select-menu')}>
+      <div
+        ref={this.menu}
+        className={cx('Select-menu', {
+          'Select--longlist': filtedOptions.length && filtedOptions.length > 100
+        })}
+      >
         {searchable ? (
           <div
             className={cx(`Select-input`, {
@@ -860,13 +854,18 @@ export class Select extends React.Component<SelectProps, SelectState> {
             ) : null}
           </div>
         ) : null}
-
+        {multiple && valuesNoWrap ? (
+          <div className={cx('Select-option')}>
+            已选择({selectionValues.length})
+          </div>
+        ) : null}
         {multiple && checkAll && filtedOptions.length ? (
           <div className={cx('Select-option')}>
             <Checkbox
               checked={checkedPartial}
               partial={checkedPartial && !checkedAll}
               onChange={this.toggleCheckAll}
+              size="sm"
             >
               {__(checkAllLabel)}
             </Checkbox>
@@ -874,7 +873,11 @@ export class Select extends React.Component<SelectProps, SelectState> {
         ) : null}
 
         <div ref={this.menuItemRef} className={cx('Select-option invisible')}>
-          <span>Placeholder</span>
+          {multiple ? (
+            <Checkbox size="sm">Placeholder</Checkbox>
+          ) : (
+            <span>Placeholder</span>
+          )}
         </div>
 
         {creatable && !disabled ? (
@@ -916,11 +919,9 @@ export class Select extends React.Component<SelectProps, SelectState> {
       >
         <PopOver
           overlay
-          className={cx('Select-popover')}
+          className={cx('Select-popover', popoverClassName)}
           style={{
-            minWidth: this.target
-              ? this.target.getBoundingClientRect().width
-              : 'auto'
+            minWidth: this.target ? this.target.offsetWidth : 'auto'
           }}
           onHide={this.close}
         >
@@ -934,6 +935,7 @@ export class Select extends React.Component<SelectProps, SelectState> {
     const {
       classnames: cx,
       multiple,
+      valuesNoWrap,
       searchable,
       inline,
       className,
@@ -986,7 +988,11 @@ export class Select extends React.Component<SelectProps, SelectState> {
                 className
               )}
             >
-              <div className={cx(`Select-valueWrap`)}>
+              <div
+                className={cx(`Select-valueWrap`, {
+                  'Select-valuesNoWrap': valuesNoWrap
+                })}
+              >
                 {this.renderValue(options)}
               </div>
               {clearable &&

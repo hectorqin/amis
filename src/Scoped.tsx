@@ -102,7 +102,7 @@ function createScopedTools(
       return components.concat();
     },
 
-    reload(target: string, ctx: any) {
+    reload(target: string | Array<string>, ctx: any) {
       const scoped = this;
 
       let targets =
@@ -112,7 +112,15 @@ function createScopedTools(
         let query = null;
 
         if (~idx2) {
-          query = dataMapping(qs.parse(name.substring(idx2 + 1)), ctx);
+          const queryObj = qs.parse(
+            name
+              .substring(idx2 + 1)
+              .replace(
+                /\$\{(.*?)\}/,
+                (_, match) => '${' + encodeURIComponent(match) + '}'
+              )
+          );
+          query = dataMapping(queryObj, ctx);
           name = name.substring(0, idx2);
         }
 
@@ -140,13 +148,27 @@ function createScopedTools(
       });
     },
 
-    send(receive: string, values: object) {
+    send(receive: string | Array<string>, values: object) {
       const scoped = this;
       let receives =
         typeof receive === 'string' ? receive.split(/\s*,\s*/) : receive;
 
       // todo 没找到做提示！
       receives.forEach(name => {
+        const askIdx = name.indexOf('?');
+        if (~askIdx) {
+          const query = name.substring(askIdx + 1);
+          const queryObj = qs.parse(
+            query.replace(
+              /\$\{(.*?)\}/,
+              (_, match) => '${' + encodeURIComponent(match) + '}'
+            )
+          );
+
+          name = name.substring(0, askIdx);
+          values = dataMapping(queryObj, values);
+        }
+
         const idx = name.indexOf('.');
         let subPath = '';
 
@@ -217,17 +239,29 @@ export function HocScoped<
 > & {
   ComposedComponent: React.ComponentType<T>;
 } {
-  class ScopedComponent extends React.Component<
-    T & {
-      scopeRef?: (ref: any) => void;
-    }
-  > {
+  type ScopedProps = T & {
+    scopeRef?: (ref: any) => void;
+  };
+  class ScopedComponent extends React.Component<ScopedProps> {
     static displayName = `Scoped(${
       ComposedComponent.displayName || ComposedComponent.name
     })`;
     static contextType = ScopedContext;
     static ComposedComponent = ComposedComponent;
     ref: any;
+    scoped?: IScopedContext;
+
+    constructor(props: ScopedProps, context: IScopedContext) {
+      super(props);
+
+      this.scoped = createScopedTools(
+        this.props.$path,
+        context,
+        this.props.env
+      );
+      const scopeRef = props.scopeRef;
+      scopeRef && scopeRef(this.scoped);
+    }
 
     getWrappedInstance() {
       return this.ref;
@@ -242,23 +276,17 @@ export function HocScoped<
       this.ref = ref;
     }
 
-    scoped = createScopedTools(this.props.$path, this.context, this.props.env);
-
-    componentWillMount() {
-      const scopeRef = this.props.scopeRef;
-      scopeRef && scopeRef(this.scoped);
-    }
-
     componentWillUnmount() {
       const scopeRef = this.props.scopeRef;
       scopeRef && scopeRef(null);
+      delete this.scoped;
     }
 
     render() {
       const {scopeRef, ...rest} = this.props;
 
       return (
-        <ScopedContext.Provider value={this.scoped}>
+        <ScopedContext.Provider value={this.scoped!}>
           <ComposedComponent
             {
               ...(rest as any) /* todo */
